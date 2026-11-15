@@ -42,12 +42,30 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
+      # Diagnóstico de la firma ANTES de compilar (1 min en vez de 12). Nunca imprime los secretos:
+      # solo el veredicto, como anotación «::error::» visible en el resumen de la ejecución.
       - name: Comprobar los secretos de firma del actualizador
         shell: pwsh
         env:
-          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          if (-not $env:KEY) { throw "Falta el secreto TAURI_SIGNING_PRIVATE_KEY: sin él no se pueden firmar las actualizaciones. Ver release.yml." }
+          function Fail($msg) { Write-Output "::error title=Firma del actualizador::$msg"; exit 1 }
+          $key = "$env:TAURI_SIGNING_PRIVATE_KEY".Trim()
+          if (-not $key) { Fail "Falta el secreto TAURI_SIGNING_PRIVATE_KEY (o no está en Settings → Secrets and variables → Actions → Secrets)." }
+          if (-not "$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD") { Fail "Falta el secreto TAURI_SIGNING_PRIVATE_KEY_PASSWORD." }
+          try { $text = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($key)) }
+          catch { Fail "TAURI_SIGNING_PRIVATE_KEY no es base64 válido: pega el contenido completo de cartucho-music-updater.key, sin añadir nada." }
+          if ($text -match "public key") { Fail "TAURI_SIGNING_PRIVATE_KEY contiene la clave PÚBLICA (.key.pub). Debe ser la privada: cartucho-music-updater.key." }
+          if ($text -notmatch "secret key") { Fail "TAURI_SIGNING_PRIVATE_KEY no parece una clave privada de Tauri." }
+          Set-Content probe.txt "firma de prueba"
+          $out = npx tauri signer sign probe.txt 2>&1 | Out-String
+          if ($LASTEXITCODE -ne 0) {
+            if ($out -match "Wrong password") { Fail "TAURI_SIGNING_PRIVATE_KEY_PASSWORD no corresponde a la clave privada (contraseña incorrecta)." }
+            Fail "La clave privada no ha podido firmar un archivo de prueba."
+          }
+          Remove-Item probe.txt, probe.txt.sig -ErrorAction SilentlyContinue
+          Write-Output "La clave y la contraseña firman correctamente."
 
       - name: Comprobar que la etiqueta coincide con la versión de la app
         shell: pwsh
