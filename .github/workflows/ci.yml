@@ -1,0 +1,44 @@
+# Verificación continua: tipos, pruebas de frontend y pruebas de Rust en Windows.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Comprobaciones (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Tauri incrusta `dist` al compilar Rust (también en `cargo test`): hay que construirlo antes.
+      - name: Construir el frontend
+        run: npm run build
+
+      - name: Tipos, pruebas de frontend y pruebas de Rust
+        run: npm run check

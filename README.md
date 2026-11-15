@@ -1,5 +1,7 @@
 # Cartucho Music
 
+[![CI](https://github.com/Piscuish/cartucho-music/actions/workflows/ci.yml/badge.svg)](https://github.com/Piscuish/cartucho-music/actions/workflows/ci.yml)
+
 Cliente musical de escritorio para Windows (Tauri + React + TypeScript) con identidad propia y muy personalizable. Se conecta a Spotify a través de sus APIs oficiales. Apple Music está preparado pero en pausa.
 
 > Antes de tocar las integraciones, lee **[docs/VIABILIDAD.md](docs/VIABILIDAD.md)** (restricciones de las APIs, políticas y riesgos) y **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**.
@@ -20,14 +22,28 @@ Cliente musical de escritorio para Windows (Tauri + React + TypeScript) con iden
 
 ## Instalar
 
-El instalador se genera en:
-
-```
-src-tauri/target/release/bundle/nsis/Cartucho Music_1.0.0_x64-setup.exe
-```
+Descarga el instalador de la página de [Releases](https://github.com/Piscuish/cartucho-music/releases). También puedes compilarlo en local con `npm run tauri build`; se genera en `src-tauri/target/release/bundle/nsis/`.
 
 - Se instala para el usuario actual, sin pedir permisos de administrador.
 - Si falta WebView2, el instalador lo descarga.
+- No está firmado: Windows SmartScreen puede avisar. Pulsa «Más información → Ejecutar de todas formas».
+
+## Publicar una versión
+
+1. Sube la versión en `package.json`, `src-tauri/Cargo.toml` y `src-tauri/tauri.conf.json`.
+2. Crea y sube la etiqueta:
+
+```bash
+git tag v1.0.1
+```
+
+```bash
+git push origin v1.0.1
+```
+
+3. GitHub Actions ejecuta las pruebas, compila el instalador y crea un **borrador** de Release. Revísalo en GitHub y pulsa «Publish release».
+
+Cada push a `main` y cada pull request pasan por el CI: tipos, pruebas de frontend y de Rust en Windows.
 
 ### Conectar Spotify
 1. En el [dashboard de Spotify](https://developer.spotify.com/dashboard), registra la Redirect URI `http://127.0.0.1/callback` (sin puerto).

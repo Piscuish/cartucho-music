@@ -1,0 +1,64 @@
+# Publicación: al subir una etiqueta `vX.Y.Z`, compila el instalador de Windows y
+# crea un BORRADOR de Release con él. Revísalo en GitHub y pulsa «Publish» cuando quieras.
+#
+#   git tag v1.0.1
+#   git push origin v1.0.1
+#
+# La versión de la etiqueta debe coincidir con la de `src-tauri/tauri.conf.json`.
+name: Release
+
+# Solo con etiquetas: lanzarlo sin etiqueta crearía una Release con el nombre de la rama.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Instalador de Windows
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Comprobar que la etiqueta coincide con la versión de la app
+        shell: pwsh
+        run: |
+          $app = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $tag = "${{ github.ref_name }}".TrimStart("v")
+          if ($app -ne $tag) { throw "La etiqueta v$tag no coincide con la versión $app de tauri.conf.json" }
+
+      - name: Pruebas antes de publicar
+        run: |
+          npm run build
+          npm run check
+
+      - name: Compilar y crear el borrador de Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Cartucho Music ${{ github.ref_name }}"
+          releaseBody: |
+            Instalador para Windows 10/11 (x64). Se instala para el usuario actual, sin permisos de administrador.
+
+            El instalador no está firmado: Windows SmartScreen puede mostrar un aviso. Pulsa «Más información → Ejecutar de todas formas».
+          releaseDraft: true
+          prerelease: false
