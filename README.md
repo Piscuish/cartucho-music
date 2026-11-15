@@ -6,7 +6,7 @@ Cliente musical de escritorio para Windows (Tauri + React + TypeScript) con iden
 
 > Antes de tocar las integraciones, lee **[docs/VIABILIDAD.md](docs/VIABILIDAD.md)** (restricciones de las APIs, políticas y riesgos) y **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**.
 
-## Estado — versión 1.0.0
+## Estado — versión 1.0.1
 
 | Fase | Estado |
 |---|---|
@@ -27,6 +27,27 @@ Descarga el instalador de la página de [Releases](https://github.com/Piscuish/c
 - Se instala para el usuario actual, sin pedir permisos de administrador.
 - Si falta WebView2, el instalador lo descarga.
 - No está firmado: Windows SmartScreen puede avisar. Pulsa «Más información → Ejecutar de todas formas».
+
+## Actualizaciones
+
+Desde la 1.0.1, Cartucho se actualiza solo desde las Releases de GitHub:
+- **Ajustes → Actualizaciones:** muestra la versión instalada, tiene el botón «Buscar actualizaciones» y la opción de comprobarlas automáticamente (al abrir y cada 6 horas).
+- **Aviso:** cuando hay una versión nueva, aparece en la barra lateral. Se instala con un clic y la app se reinicia sola.
+- **Firma:** solo se aceptan actualizaciones firmadas con la clave del proyecto.
+
+La 1.0.0 no tenía actualizador: quien la tenga instalada debe instalar la 1.0.1 a mano una vez.
+
+### Configuración de la firma (una sola vez)
+La clave privada **nunca** va al repositorio; se guarda como secreto en GitHub. En **Settings → Secrets and variables → Actions → New repository secret**, crea:
+
+| Secreto | Valor |
+|---|---|
+| `TAURI_SIGNING_PRIVATE_KEY` | contenido de `%USERPROFILE%\.tauri\cartucho-music-updater.key` |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | contenido de `%USERPROFILE%\.tauri\cartucho-music-updater.key.password` |
+
+Guarda una copia de esos dos archivos en un lugar seguro. Si se pierden, las versiones instaladas no podrán aceptar actualizaciones nuevas.
+
+Para compilar en local el instalador firmado, define esas dos variables de entorno antes de `npm run tauri build`.
 
 ## Publicar una versión
 

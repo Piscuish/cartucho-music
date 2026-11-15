@@ -7,7 +7,6 @@ import { lazy, Suspense } from "react";
 // Inicio se carga de inmediato (es la primera pantalla); el resto, bajo demanda.
 import { HomePage } from "@/pages/HomePage";
 
-const ExplorePage = lazy(() => import("@/pages/ExplorePage").then((m) => ({ default: m.ExplorePage })));
 const SearchPage = lazy(() => import("@/pages/SearchPage").then((m) => ({ default: m.SearchPage })));
 const LibraryPage = lazy(() => import("@/pages/LibraryPage").then((m) => ({ default: m.LibraryPage })));
 const FavoritesPage = lazy(() => import("@/pages/FavoritesPage").then((m) => ({ default: m.FavoritesPage })));
@@ -19,17 +18,18 @@ const NowPlayingPage = lazy(() => import("@/pages/NowPlayingPage").then((m) => (
 import { useAppearanceSync } from "@/hooks/useAppearanceSync";
 import { useShortcuts } from "@/hooks/useShortcuts";
 import { useDesktopIntegration } from "@/features/desktop/useDesktopIntegration";
+import { useAutoUpdateCheck } from "@/features/updates/updater";
 import { useAppearance } from "@/stores/appearance";
 
 function AppRoutes() {
   useShortcuts();
   useDesktopIntegration();
+  useAutoUpdateCheck();
   return (
     <Routes>
       <Route path="/reproduciendo" element={<Suspense fallback={null}><NowPlayingPage /></Suspense>} />
       <Route element={<AppShell />}>
         <Route index element={<HomePage />} />
-        <Route path="explorar" element={<ExplorePage />} />
         <Route path="buscar" element={<SearchPage />} />
         <Route path="biblioteca" element={<LibraryPage tab="playlists" />} />
         <Route path="playlists" element={<LibraryPage tab="playlists" title="Playlists" />} />

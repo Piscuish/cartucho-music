@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { ProviderId, Track } from "@/types/music";
 import type { PlayContext, PlaybackState, RepeatMode } from "@/providers/types";
 import { providers, registry } from "@/providers/registry";
-import { describeError, NoActiveDeviceError } from "@/providers/errors";
+import { describeError, MissingPermissionError, NoActiveDeviceError } from "@/providers/errors";
 import { queryClient } from "@/app/queryClient";
 import { history } from "@/database/stores";
 
@@ -33,15 +33,18 @@ interface PlayerStore {
   toggleShuffle: () => Promise<void>;
   cycleRepeat: () => Promise<void>;
   addToQueue: (track: Track) => Promise<void>;
+  removeFromQueue: (index: number) => Promise<void>;
+  moveInQueue: (from: number, to: number) => Promise<void>;
   showToast: (t: Toast) => void;
   clearToast: () => void;
 }
 
-export interface Toast { kind: "error" | "info"; message: string; action?: "devices" }
+export interface Toast { kind: "error" | "info"; message: string; action?: "devices" | "reconnect" }
 
 /** Convierte un error en un toast; algunos llevan acción directa. */
 export function toastFor(e: unknown): Toast {
-  return { kind: "error", message: describeError(e), action: e instanceof NoActiveDeviceError ? "devices" : undefined };
+  const action = e instanceof NoActiveDeviceError ? "devices" : e instanceof MissingPermissionError ? "reconnect" : undefined;
+  return { kind: "error", message: describeError(e), action };
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -131,6 +134,16 @@ export const usePlayer = create<PlayerStore>()((set, get) => {
         console.warn("[player]", e);
         get().showToast(toastFor(e));
       }
+    },
+    removeFromQueue: async (index) => {
+      await run((pb) => pb.removeFromQueue(index));
+      const id = get().activeProvider;
+      if (id) await queryClient.invalidateQueries({ queryKey: [id, "queue"] });
+    },
+    moveInQueue: async (from, to) => {
+      await run((pb) => pb.moveInQueue(from, to));
+      const id = get().activeProvider;
+      if (id) await queryClient.invalidateQueries({ queryKey: [id, "queue"] });
     },
     showToast: (t) => {
       if (toastTimer) clearTimeout(toastTimer);

@@ -5,6 +5,11 @@
 #   git push origin v1.0.1
 #
 # La versión de la etiqueta debe coincidir con la de `src-tauri/tauri.conf.json`.
+#
+# Requiere dos secretos del repositorio (Settings → Secrets and variables → Actions):
+#   TAURI_SIGNING_PRIVATE_KEY           contenido de la clave privada del actualizador
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  su contraseña
+# Con ellos se firma el instalador y se publica `latest.json` para las actualizaciones automáticas.
 name: Release
 
 # Solo con etiquetas: lanzarlo sin etiqueta crearía una Release con el nombre de la rama.
@@ -37,6 +42,13 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
+      - name: Comprobar los secretos de firma del actualizador
+        shell: pwsh
+        env:
+          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if (-not $env:KEY) { throw "Falta el secreto TAURI_SIGNING_PRIVATE_KEY: sin él no se pueden firmar las actualizaciones. Ver release.yml." }
+
       - name: Comprobar que la etiqueta coincide con la versión de la app
         shell: pwsh
         run: |
@@ -53,6 +65,8 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Cartucho Music ${{ github.ref_name }}"
@@ -62,3 +76,6 @@ jobs:
             El instalador no está firmado: Windows SmartScreen puede mostrar un aviso. Pulsa «Más información → Ejecutar de todas formas».
           releaseDraft: true
           prerelease: false
+          # Publica latest.json (lo que consulta el actualizador de la app) apuntando al instalador NSIS.
+          includeUpdaterJson: true
+          updaterJsonPreferNsis: true

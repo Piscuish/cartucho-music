@@ -16,7 +16,7 @@ import { shortcuts } from "@/hooks/useShortcuts";
 import { cache, history, kv, storageBackend } from "@/database/stores";
 import { secureStore } from "@/services/secure-store";
 import { useAppearance } from "@/stores/appearance";
-import { PlannedRow, Row, SectionTitle } from "./common";
+import { Row, SectionTitle } from "./common";
 import { SpotifyCard } from "./SpotifyCard";
 
 function DesktopOnly() {
@@ -66,8 +66,6 @@ const capabilityRows: { label: string; get: (c: ProviderCapabilities) => boolean
   { label: "Reproducciones recientes", get: (c) => c.personalization.recentlyPlayed },
   { label: "Artistas más escuchados", get: (c) => c.personalization.topArtists },
   { label: "Recomendaciones", get: (c) => c.personalization.recommendations },
-  { label: "Novedades", get: (c) => c.catalog.newReleases },
-  { label: "Top canciones de artista", get: (c) => c.catalog.artistTopTracks },
   { label: "Reproducción dentro de la app", get: (c) => c.playback.inApp },
   { label: "Control remoto de dispositivos", get: (c) => c.playback.remoteControl },
   { label: "Reordenar la cola", get: (c) => c.queue.reorder },
@@ -164,22 +162,10 @@ export function PlaybackSection() {
   return (
     <>
       <SectionTitle title="Reproducción" description="La reproducción siempre usa el mecanismo oficial del servicio activo." />
-      <Notice>Spotify funcionará por defecto como mando de Spotify Connect: controla la app oficial de Spotify en cualquiera de tus dispositivos.</Notice>
-      <div className="mt-4">
-        <PlannedRow label="Reproducir dentro de Cartucho (Web Playback SDK)" hint="Solo si la prueba de DRM tiene éxito en este equipo." phase={3} />
-        <PlannedRow label="Continuar donde lo dejaste" phase={4} />
-        <PlannedRow label="Transiciones sin pausas" hint="Depende del servicio." phase={4} />
-      </div>
-    </>
-  );
-}
-
-export function AudioSection() {
-  return (
-    <>
-      <SectionTitle title="Audio" description="La calidad y la salida de audio las gestiona cada servicio. Aquí solo aparecerán los ajustes que su SDK exponga." />
-      <PlannedRow label="Normalizar volumen" phase={4} />
-      <PlannedRow label="Calidad de transmisión" phase={4} />
+      <Notice>
+        Con Spotify, Cartucho puede sonar en este equipo (reproductor integrado «Cartucho Music») o controlar la app oficial en cualquiera de tus dispositivos.
+        Elige dónde suena con el botón de dispositivos del reproductor.
+      </Notice>
     </>
   );
 }

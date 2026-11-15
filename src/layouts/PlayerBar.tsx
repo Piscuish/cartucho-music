@@ -16,6 +16,7 @@ import { formatDuration } from "@/utils/format";
 import { routes } from "@/utils/routes";
 import { DevicePicker } from "@/features/player/DevicePicker";
 import { useUi } from "@/stores/ui";
+import { connectSpotify } from "@/providers/spotify/connector";
 
 export function PlayerBar() {
   const style = useAppearance((s) => s.playerStyle);
@@ -84,9 +85,11 @@ export function PlayerBar() {
       {state?.mode === "remote" && state.device && (
         <span className="mr-2 hidden text-[11.5px] text-accent xl:inline">En {state.device.name}</span>
       )}
-      <IconButton label={lyricsAvailable ? "Letras" : "Letras no disponibles para este servicio"} size="sm" disabled={!lyricsAvailable}>
-        <MicVocal className="size-4" />
-      </IconButton>
+      {lyricsAvailable && (
+        <IconButton label="Letras" size="sm" onClick={() => nav("/reproduciendo")}>
+          <MicVocal className="size-4" />
+        </IconButton>
+      )}
       <IconButton label="Cola" size="sm" active={loc.pathname === "/cola"} onClick={() => (loc.pathname === "/cola" ? nav(-1) : nav("/cola"))}>
         <ListOrdered className="size-4" />
       </IconButton>
@@ -149,6 +152,11 @@ export function PlayerBar() {
           )}
         >
           {notice.message}
+          {notice.action === "reconnect" && (
+            <button onClick={() => { clearToast(); void connectSpotify().catch((e) => console.warn("[spotify]", e)); }} className="rounded-full bg-accent px-3 py-1 font-semibold text-on-accent">
+              Reconectar
+            </button>
+          )}
           {notice.action === "devices" && (
             <button data-devices-trigger onClick={() => { clearToast(); openDevices(true); }} className="rounded-full bg-accent px-3 py-1 font-semibold text-on-accent">
               Elegir dispositivo

@@ -5,7 +5,7 @@ import { MediaCard } from "@/components/MediaCard";
 import { LoadMore } from "@/components/LoadMore";
 import { ProviderBadge } from "@/components/ProviderBadge";
 import { TrackList } from "@/components/TrackList";
-import { CardSkeletons, EmptyState, Notice, QueryError, RowSkeletons, Skeleton } from "@/components/ui";
+import { CardSkeletons, EmptyState, QueryError, RowSkeletons, Skeleton } from "@/components/ui";
 import { useArtist, useArtistAlbums, useArtistTopTracks } from "@/features/catalog/queries";
 import { usePlayer } from "@/stores/player";
 import { providerIds, providers } from "@/providers/registry";
@@ -56,14 +56,14 @@ function ArtistView({ provider, id }: { provider: ProviderId; id: string }) {
         </button>
       </div>
 
-      <section className="mb-10">
-        <h2 className="mb-4 font-display text-[20px] font-semibold">Populares</h2>
-        {!caps.catalog.artistTopTracks ? (
-          <Notice>{providers[provider].name} no ofrece el ranking de canciones populares a apps en Development Mode. Abajo tienes su discografía.</Notice>
-        ) : top.isLoading ? <RowSkeletons count={5} />
-          : top.error ? <QueryError error={top.error} onRetry={() => top.refetch()} />
-          : <TrackList tracks={top.data ?? []} numbered showAlbum={false} />}
-      </section>
+      {caps.catalog.artistTopTracks && (
+        <section className="mb-10">
+          <h2 className="mb-4 font-display text-[20px] font-semibold">Populares</h2>
+          {top.isLoading ? <RowSkeletons count={5} />
+            : top.error ? <QueryError error={top.error} onRetry={() => top.refetch()} />
+            : <TrackList tracks={top.data ?? []} numbered showAlbum={false} />}
+        </section>
+      )}
 
       <section>
         <h2 className="mb-4 font-display text-[20px] font-semibold">Discografía</h2>

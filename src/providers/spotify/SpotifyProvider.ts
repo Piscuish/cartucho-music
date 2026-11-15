@@ -1,7 +1,8 @@
 import type {
   AuthModule, CatalogModule, LibraryModule, MusicProvider, PersonalizationModule,
 } from "../types";
-import { UnsupportedOperationError } from "../errors";
+import { MissingPermissionError, UnsupportedOperationError } from "../errors";
+import { ForbiddenError } from "@/services/http/errors";
 import { providers } from "../registry";
 import { SpotifyApi } from "./api";
 import type { SpotifyAuth } from "./auth";
@@ -45,6 +46,17 @@ export class SpotifyProvider implements MusicProvider {
     });
     const api = this.api;
     const unsupported = (op: string) => Promise.reject(new UnsupportedOperationError("spotify", op));
+    // Las sesiones anteriores a 1.0.1 no tienen permiso para editar playlists: hay que reconectar.
+    const withPlaylistScope = async <T>(fn: () => Promise<T>): Promise<T> => {
+      await auth.getAccessToken(); // asegura que el token (y sus permisos) está cargado
+      if (!auth.hasScopes("playlist-modify-private", "playlist-modify-public")) throw new MissingPermissionError("spotify", "playlist-modify");
+      try {
+        return await fn();
+      } catch (e) {
+        if (e instanceof ForbiddenError) throw new MissingPermissionError("spotify", "playlist-modify");
+        throw e;
+      }
+    };
 
     this.catalog = {
       search: (q, o) => (q.trim()
@@ -68,6 +80,8 @@ export class SpotifyProvider implements MusicProvider {
       containsTracks: (ids, s) => api.containsTracks(ids, s),
       saveTracks: (ids) => api.saveTracks(ids),
       removeTracks: (ids) => api.removeTracks(ids),
+      addToPlaylist: (id, ids) => withPlaylistScope(() => api.addToPlaylist(id, ids)),
+      createPlaylist: (name) => withPlaylistScope(() => api.createPlaylist(name)),
     };
 
     this.personalization = {

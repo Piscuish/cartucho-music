@@ -90,7 +90,7 @@ export function mapArtist(a: SpotifyArtist): Artist {
   return { kind: "artist", id: a.id, provider: "spotify", name: a.name, genres: a.genres.slice(0, 3), artwork: toArtwork(a.images) };
 }
 
-export function mapPlaylist(p: SpotifySimplifiedPlaylist, trackIds: string[] = []): Playlist {
+export function mapPlaylist(p: SpotifySimplifiedPlaylist, trackIds: string[] = [], userId?: string): Playlist {
   return {
     kind: "playlist",
     id: p.id,
@@ -101,6 +101,7 @@ export function mapPlaylist(p: SpotifySimplifiedPlaylist, trackIds: string[] = [
     trackIds,
     trackCount: p.items?.total ?? p.tracks?.total ?? trackIds.length,
     artwork: toArtwork(p.images),
+    canEdit: !!userId && (p.owner.id === userId || !!p.collaborative),
   };
 }
 
@@ -148,10 +149,10 @@ export function artistsFrom(xs: unknown[]): Artist[] {
   });
 }
 
-export function playlistsFrom(xs: unknown[]): Playlist[] {
+export function playlistsFrom(xs: unknown[], userId?: string): Playlist[] {
   return xs.flatMap((x) => {
     if (x == null) return []; // Spotify devuelve null para playlists no disponibles
     const r = simplifiedPlaylistSchema.safeParse(x);
-    return r.success ? [mapPlaylist(r.data)] : [];
+    return r.success ? [mapPlaylist(r.data, [], userId)] : [];
   });
 }

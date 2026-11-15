@@ -62,7 +62,8 @@ export class PreviewProvider implements MusicProvider {
     this.tracks = data.tracks.filter((t) => t.provider === id);
     this.albums = data.albums.filter((a) => a.provider === id);
     this.artists = data.artists.filter((a) => a.provider === id);
-    this.playlists = data.playlists.filter((p) => p.provider === id);
+    // Copias editables: los cambios de la vista previa no tocan el catálogo de ejemplo.
+    this.playlists = data.playlists.filter((p) => p.provider === id).map((p) => ({ ...p, trackIds: [...p.trackIds], canEdit: true }));
 
     const status: ConnectionStatus = { state: "preview" };
     this.auth = {
@@ -105,6 +106,22 @@ export class PreviewProvider implements MusicProvider {
         this.guard(this.capabilities.library.write, "saveTracks");
         const current = await this.savedIds();
         await this.opts.kv.set(this.savedKey, JSON.stringify([...ids.filter((i) => !current.includes(i)), ...current]));
+      },
+      addToPlaylist: async (pid, ids) => {
+        this.guard(this.capabilities.library.playlistWrite, "addToPlaylist");
+        const p = this.find(this.playlists, pid, "Playlist");
+        if (!p.canEdit) throw new UnsupportedOperationError(id, "addToPlaylist");
+        p.trackIds.push(...ids.filter((x) => this.tracks.some((t) => t.id === x)));
+        p.trackCount = p.trackIds.length;
+      },
+      createPlaylist: async (name) => {
+        this.guard(this.capabilities.library.playlistWrite, "createPlaylist");
+        const p: Playlist = {
+          kind: "playlist", id: `pl-local-${Date.now().toString(36)}`, provider: id, name: name.trim(), description: "",
+          ownerName: "Tú", trackIds: [], trackCount: 0, canEdit: true, artwork: { palette: ["#3a3442", "#14121a"] },
+        };
+        this.playlists.unshift(p);
+        return p;
       },
       removeTracks: async (ids) => {
         this.guard(this.capabilities.library.write, "removeTracks");

@@ -38,7 +38,7 @@ export const homeSectionLabels: Record<HomeSectionId, string> = {
 };
 
 /** Entradas de la barra lateral que se pueden ocultar (Inicio y Configuración siempre están). */
-export const navIds = ["explore", "search", "library", "albums", "artists", "songs", "playlists", "favorites", "queue"] as const;
+export const navIds = ["search", "library", "albums", "artists", "songs", "playlists", "favorites", "queue"] as const;
 export type NavId = (typeof navIds)[number];
 
 export interface AppearanceState {
@@ -138,7 +138,9 @@ export const appearanceSchema = z.object({
   bgIntensity: z.number().int().min(0).max(100).catch(defaults.bgIntensity),
   glass: z.enum(["off", "subtle", "strong"]).catch(defaults.glass),
   sidebarStyle: z.enum(["expanded", "rail", "floating"]).catch(defaults.sidebarStyle),
-  hiddenNav: z.array(z.enum(navIds)).catch(defaults.hiddenNav).transform((xs) => [...new Set(xs)]),
+  // Se ignoran entradas que ya no existen (p. ej. "explore", retirada en 1.0.1) sin perder el resto.
+  hiddenNav: z.array(z.string()).catch(defaults.hiddenNav)
+    .transform((xs) => [...new Set(xs.filter((x): x is NavId => (navIds as readonly string[]).includes(x)))]),
   playerStyle: z.enum(["bar", "island", "minimal"]).catch(defaults.playerStyle),
   motion: z.enum(["full", "reduced", "off"]).catch(defaults.motion),
   density: z.enum(["comfortable", "compact"]).catch(defaults.density),

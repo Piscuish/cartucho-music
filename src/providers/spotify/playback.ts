@@ -9,11 +9,12 @@
 import type {
   DevicesModule, InAppPlayerStatus, PlayContext, PlaybackDevice, PlaybackModule, PlaybackState, QueueSnapshot, RepeatMode,
 } from "../types";
-import { NoActiveDeviceError, PremiumRequiredError, UnsupportedOperationError } from "../errors";
+import { NoActiveDeviceError, PremiumRequiredError } from "../errors";
 import { HttpError } from "@/services/http/errors";
 import { LIMITS, spotifyReason, type SpotifyApi } from "./api";
-import { tracksFrom, uri } from "./mappers";
-import type { SpotifyPlaybackState } from "./schemas";
+import { mapTrack, tracksFrom, uri } from "./mappers";
+import { trackSchema, type SpotifyPlaybackState } from "./schemas";
+import type { Track } from "@/types/music";
 import type { WebPlaybackDevice } from "./webPlayback";
 
 export interface SpotifyPlaybackOptions {
@@ -40,6 +41,13 @@ export class SpotifyPlayback implements PlaybackModule, DevicesModule {
   private readonly clearTimer: (id: unknown) => void;
   private readonly isHidden: () => boolean;
   private readonly sleep: (ms: number) => Promise<void>;
+  /**
+   * Cola gestionada por Cartucho: [actual, ...siguientes]. Existe desde que el usuario
+   * quita o reordena; Spotify no permite editar su cola, así que Cartucho reenvía la lista.
+   */
+  private managed: Track[] | null = null;
+  /** Último contexto lanzado desde Cartucho (para recuperar la lista completa al editar). */
+  private lastContext: PlayContext | null = null;
 
   constructor(private readonly api: SpotifyApi, private readonly sdk: WebPlaybackDevice | null, opts: SpotifyPlaybackOptions = {}) {
     this.sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
@@ -103,10 +111,20 @@ export class SpotifyPlayback implements PlaybackModule, DevicesModule {
   /** Lee el estado real. Las lecturas concurrentes se agrupan. */
   refresh(): Promise<void> {
     this.inflight ??= this.api.playbackState()
-      .then((s) => this.commit(this.mapState(s)))
+      .then((s) => { const next = this.mapState(s); this.syncManaged(next); this.commit(next); })
       .catch((e) => console.warn("[spotify] estado", e))
       .finally(() => { this.inflight = null; this.schedule(); });
     return this.inflight;
+  }
+
+  /** Al avanzar, se descartan las pistas ya sonadas; si suena algo ajeno a la lista, se deja de gestionar. */
+  private syncManaged(s: PlaybackState | null) {
+    if (!this.managed) return;
+    const id = s?.track?.id;
+    if (!id) return;
+    const i = this.managed.findIndex((t) => t.id === id);
+    if (i < 0) this.managed = null;
+    else if (i > 0) this.managed = this.managed.slice(i);
   }
 
   /** Intervalo adaptativo: rápido al terminar la pista, lento en pausa u oculto. */
@@ -161,6 +179,8 @@ export class SpotifyPlayback implements PlaybackModule, DevicesModule {
 
   async play(ctx: PlayContext) {
     this.sdk?.activate(); // dentro del gesto del usuario
+    this.managed = null;
+    this.lastContext = ctx;
     const body: Record<string, unknown> = {};
     switch (ctx.kind) {
       case "album":
@@ -227,13 +247,85 @@ export class SpotifyPlayback implements PlaybackModule, DevicesModule {
     return this.command(() => this.api.http.put("me/player/repeat", { query: { state: fromRepeat[mode] } }));
   }
 
-  getQueue(signal?: AbortSignal): Promise<QueueSnapshot> { return this.api.queue(signal); }
-  addToQueue(trackId: string) {
+  async getQueue(signal?: AbortSignal): Promise<QueueSnapshot> {
+    const current = this.state?.track ?? null;
+    if (this.managed && current && this.managed[0]?.id === current.id) {
+      return { current, upNext: this.managed.slice(1) };
+    }
+    return this.api.queue(signal);
+  }
+
+  async addToQueue(trackId: string) {
+    if (this.managed) {
+      // Con la cola gestionada, la canción entra justo después de la actual.
+      const track = await this.trackById(trackId);
+      if (track) return this.applyQueue([this.managed[0], track, ...this.managed.slice(1)]);
+    }
     return this.command(() => this.api.http.post("me/player/queue", { query: { uri: uri.track(trackId) } }));
   }
-  // La Web API no permite quitar ni reordenar elementos de la cola.
-  async removeFromQueue(_index: number): Promise<void> { throw new UnsupportedOperationError("spotify", "removeFromQueue"); }
-  async moveInQueue(_from: number, _to: number): Promise<void> { throw new UnsupportedOperationError("spotify", "moveInQueue"); }
+
+  /** Quita la canción `index` de «A continuación». */
+  async removeFromQueue(index: number): Promise<void> {
+    const list = await this.editableList();
+    if (index < 0 || index + 1 >= list.length) return;
+    list.splice(index + 1, 1);
+    await this.applyQueue(list);
+  }
+
+  /** Mueve una canción de «A continuación» de `from` a `to`. */
+  async moveInQueue(from: number, to: number): Promise<void> {
+    const list = await this.editableList();
+    const up = list.slice(1);
+    if (from < 0 || from >= up.length || to < 0 || to >= up.length || from === to) return;
+    const [item] = up.splice(from, 1);
+    up.splice(to, 0, item);
+    await this.applyQueue([list[0], ...up]);
+  }
+
+  /**
+   * Lista [actual, ...siguientes] para editar. Si la reproducción la lanzó Cartucho con un
+   * álbum o playlist, se usa la lista completa; si no, la cola que informa Spotify.
+   */
+  private async editableList(): Promise<Track[]> {
+    const current = this.state?.track;
+    if (!current) throw new NoActiveDeviceError("spotify");
+    if (this.managed && this.managed[0]?.id === current.id) return [...this.managed];
+    let source: Track[] | null = null;
+    const ctx = this.lastContext;
+    try {
+      if (ctx?.kind === "album") source = (await this.api.album(ctx.id)).tracks;
+      else if (ctx?.kind === "playlist") source = (await this.api.playlist(ctx.id)).tracks;
+    } catch { source = null; }
+    const i = source ? source.findIndex((t) => t.id === current.id) : -1;
+    if (source && i >= 0) return source.slice(i, i + LIMITS.queueUris);
+    const q = await this.api.queue();
+    return [q.current ?? current, ...q.upNext].slice(0, LIMITS.queueUris);
+  }
+
+  /** Reenvía la lista a Spotify continuando la canción actual en el mismo punto. */
+  private async applyQueue(list: Track[]) {
+    const trimmed = list.slice(0, LIMITS.queueUris);
+    const position = Math.round(this.position());
+    await this.command(async () => {
+      // Con aleatorio activo, Spotify desordenaría la lista.
+      if (this.state?.shuffle) await this.api.http.put("me/player/shuffle", { query: { state: false } });
+      await this.api.http.put("me/player/play", {
+        query: { device_id: this.state?.device?.id ?? undefined },
+        body: { uris: trimmed.map((t) => uri.track(t.id)), offset: { position: 0 }, position_ms: position },
+      });
+    });
+    this.managed = trimmed;
+    this.lastContext = { kind: "tracks", trackIds: trimmed.map((t) => t.id) };
+    this.patch({ shuffle: false });
+  }
+
+  /** Pista completa (para mostrarla en la cola): de lo ya conocido o con `GET /tracks/{id}`. */
+  private async trackById(trackId: string): Promise<Track | null> {
+    const known = [...(this.managed ?? []), this.state?.track].find((t) => t?.id === trackId);
+    if (known) return known;
+    const t = await this.api.http.get(`tracks/${encodeURIComponent(trackId)}`, { schema: trackSchema });
+    return mapTrack(t);
+  }
 
   /* ───────────── Dispositivos ───────────── */
 

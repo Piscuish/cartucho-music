@@ -1,18 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
 import { SpotifyProvider } from "./SpotifyProvider";
-import { SpotifyAuth, type TokenSource } from "./auth";
+import { SPOTIFY_SCOPES, SpotifyAuth, type TokenSource } from "./auth";
 import { createFakeSpotify } from "./testing/fakeSpotify";
 import { runProviderContract } from "../testing/contract";
 import { createMemoryCache } from "@/database/stores";
-import { NoActiveDeviceError, NotFoundError, PremiumRequiredError, UnsupportedOperationError } from "../errors";
+import { MissingPermissionError, NoActiveDeviceError, NotFoundError, PremiumRequiredError } from "../errors";
 import { NativeCommandError } from "@/database/runtime";
 import { POLL } from "./playback";
+
+const ALL_SCOPES = SPOTIFY_SCOPES.join(" ");
 
 function tokens(overrides: Partial<TokenSource> = {}): TokenSource {
   let n = 0;
   return {
-    authorize: async () => ({ accessToken: "a0", expiresAt: Date.now() + 3_600_000, scope: "" }),
-    getToken: async (force) => ({ accessToken: force ? `r${++n}` : "a0", expiresAt: Date.now() + 3_600_000, scope: "" }),
+    authorize: async () => ({ accessToken: "a0", expiresAt: Date.now() + 3_600_000, scope: ALL_SCOPES }),
+    getToken: async (force) => ({ accessToken: force ? `r${++n}` : "a0", expiresAt: Date.now() + 3_600_000, scope: ALL_SCOPES }),
     logout: async () => {},
     ...overrides,
   };
@@ -20,6 +22,7 @@ function tokens(overrides: Partial<TokenSource> = {}): TokenSource {
 
 function make(fake = createFakeSpotify(), source = tokens()) {
   const auth = new SpotifyAuth(source, async () => "0123456789abcdef0123456789abcdef");
+  void auth.restore();
   const provider = new SpotifyProvider({
     auth,
     cacheStore: createMemoryCache(),
@@ -80,6 +83,39 @@ describe("SpotifyProvider", () => {
     const p = await provider.catalog.getPlaylist("ajena");
     expect(p.tracks).toEqual([]);
     expect(p.tracksRestricted).toBe(true);
+  });
+
+  it("marca como editables solo las playlists propias o colaborativas", async () => {
+    const { provider } = make();
+    await new Promise((r) => setTimeout(r, 0));
+    expect((await provider.catalog.getPlaylist("pl1")).canEdit).toBe(true);
+    expect((await provider.catalog.getPlaylist("ajena")).canEdit).toBe(false);
+    expect((await provider.library.getPlaylists()).items[0].canEdit).toBe(true);
+  });
+
+  it("añade a una playlist con URIs y en lotes de 100", async () => {
+    const { provider, fake } = make();
+    await new Promise((r) => setTimeout(r, 0));
+    await provider.library.addToPlaylist("pl1", Array.from({ length: 150 }, (_, i) => `t${i}`));
+    expect(fake.playlistAdds.map((a) => a.uris.length)).toEqual([100, 50]);
+    expect(fake.playlistAdds[0].uris[0]).toBe("spotify:track:t0");
+  });
+
+  it("sin el permiso de edición pide reconectar en vez de llamar a la API", async () => {
+    const fake = createFakeSpotify();
+    const old = tokens({ getToken: async () => ({ accessToken: "a0", expiresAt: Date.now() + 3_600_000, scope: "user-library-read streaming" }) });
+    const { provider } = make(fake, old);
+    await new Promise((r) => setTimeout(r, 0));
+    await expect(provider.library.addToPlaylist("pl1", ["t1"])).rejects.toBeInstanceOf(MissingPermissionError);
+    expect(fake.calls.some((c) => c.method === "POST")).toBe(false);
+  });
+
+  it("un 403 al editar se traduce en «reconectar»", async () => {
+    const fake = createFakeSpotify();
+    fake.overrides.set("POST playlists/pl1/items", () => new Response(JSON.stringify({ error: { status: 403, message: "Insufficient client scope" } }), { status: 403 }));
+    const { provider } = make(fake);
+    await new Promise((r) => setTimeout(r, 0));
+    await expect(provider.library.addToPlaylist("pl1", ["t1"])).rejects.toBeInstanceOf(MissingPermissionError);
   });
 
   it("traduce 404 a NotFoundError", async () => {
@@ -198,12 +234,68 @@ describe("SpotifyPlayback (Spotify Connect)", () => {
     expect(fake.calls.at(-1)?.query.get("position_ms")).toBe("0");
   });
 
-  it("la cola admite añadir pero no quitar ni reordenar", async () => {
-    const { provider } = make();
+  it("añadir a la cola sin edición previa usa la cola nativa de Spotify", async () => {
+    const { provider, fake } = make();
     await provider.playback.play({ kind: "album", id: "al1" });
     await provider.playback.addToQueue("al2-t1");
+    expect(fake.calls.at(-1)).toMatchObject({ method: "POST", path: "me/player/queue" });
     expect((await provider.playback.getQueue()).upNext[0].id).toBe("al2-t1");
-    await expect(provider.playback.moveInQueue(0, 1)).rejects.toBeInstanceOf(UnsupportedOperationError);
+  });
+
+  it("reordenar reenvía la lista completa del álbum y continúa la canción en el mismo punto", async () => {
+    const { provider, fake } = make();
+    await provider.playback.play({ kind: "album", id: "al1" });
+    await provider.playback.seek(42_000);
+    await provider.playback.moveInQueue(1, 0); // [t1 | t2, t3] → [t1 | t3, t2]
+    const play = fake.calls.filter((c) => c.path === "me/player/play").at(-1)!;
+    expect(play.body).toMatchObject({
+      uris: ["spotify:track:al1-t1", "spotify:track:al1-t3", "spotify:track:al1-t2"],
+      offset: { position: 0 },
+    });
+    expect((play.body as { position_ms: number }).position_ms).toBeGreaterThanOrEqual(42_000);
+    expect((await provider.playback.getQueue()).upNext.map((t) => t.id)).toEqual(["al1-t3", "al1-t2"]);
+  });
+
+  it("quitar de la cola reenvía la lista sin esa canción", async () => {
+    const { provider, fake } = make();
+    await provider.playback.play({ kind: "album", id: "al1" });
+    await provider.playback.removeFromQueue(0); // quita t2
+    const play = fake.calls.filter((c) => c.path === "me/player/play").at(-1)!;
+    expect((play.body as { uris: string[] }).uris).toEqual(["spotify:track:al1-t1", "spotify:track:al1-t3"]);
+    expect((await provider.playback.getQueue()).upNext.map((t) => t.id)).toEqual(["al1-t3"]);
+  });
+
+  it("al editar desactiva el aleatorio para que Spotify no desordene la lista", async () => {
+    const { provider, fake } = make();
+    await provider.playback.play({ kind: "album", id: "al1" });
+    await provider.playback.setShuffle(true);
+    await provider.playback.refresh();
+    await provider.playback.moveInQueue(1, 0);
+    const shuffleCalls = fake.calls.filter((c) => c.path === "me/player/shuffle").map((c) => c.query.get("state"));
+    expect(shuffleCalls.at(-1)).toBe("false");
+    expect(provider.playback.getState()?.shuffle).toBe(false);
+  });
+
+  it("con la cola gestionada, avanzar descarta lo ya sonado y añadir inserta tras la actual", async () => {
+    const { provider } = make();
+    await provider.playback.play({ kind: "album", id: "al1" });
+    await provider.playback.moveInQueue(1, 0); // [t1 | t3, t2]
+    await provider.playback.next();
+    await provider.playback.refresh(); // suena t3
+    expect((await provider.playback.getQueue()).upNext.map((t) => t.id)).toEqual(["al1-t2"]);
+    await provider.playback.addToQueue("al2-t1");
+    expect((await provider.playback.getQueue()).upNext.map((t) => t.id)).toEqual(["al2-t1", "al1-t2"]);
+  });
+
+  it("si suena algo ajeno a la lista gestionada, vuelve a la cola de Spotify", async () => {
+    const { provider, fake } = make();
+    await provider.playback.play({ kind: "album", id: "al1" });
+    await provider.playback.moveInQueue(1, 0);
+    // Otra app de Spotify cambia la reproducción a otro álbum.
+    fake.setPlaying({ ...fake.player!, item: { id: "al2-t2", name: "Otra", duration_ms: 1000, artists: [], uri: "spotify:track:al2-t2", type: "track", album: { id: "al2", name: "Álbum al2", images: [], artists: [], uri: "spotify:album:al2" } }, queue: [] });
+    await provider.playback.refresh();
+    expect((await provider.playback.getQueue()).upNext).toEqual([]);
+    expect(fake.calls.at(-1)?.path).toBe("me/player/queue");
   });
 
   it("dispositivos: lista y transfiere", async () => {

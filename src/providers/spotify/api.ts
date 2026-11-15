@@ -11,7 +11,7 @@ import type { AlbumDetail, Page, PageRequest, PlaylistDetail, QueueSnapshot, Sea
 import { NotFoundError } from "../errors";
 import {
   albumSchema, artistSchema, devicesSchema, followedArtistsSchema, pagingSchema, playbackStateSchema, playlistSchema,
-  queueSchema, recentlyPlayedSchema, savedAlbumSchema, savedTrackSchema, searchSchema, simplifiedTrackSchema, userSchema,
+  queueSchema, recentlyPlayedSchema, savedAlbumSchema, savedTrackSchema, searchSchema, simplifiedPlaylistSchema, simplifiedTrackSchema, userSchema,
   type SpotifyDevice, type SpotifyPlaybackState,
 } from "./schemas";
 import {
@@ -40,10 +40,13 @@ const chunk = <T>(xs: T[], n: number) => Array.from({ length: Math.ceil(xs.lengt
 export class SpotifyApi {
   readonly http: HttpClient;
   private readonly cached: ReturnType<typeof createCachedFetcher>;
+  private readonly cacheStore?: CacheStore;
+  private meP: Promise<{ id: string; displayName: string }> | null = null;
 
   constructor(opts: Omit<HttpClientOptions, "baseUrl"> & { cacheStore?: CacheStore }) {
     this.http = new HttpClient({ baseUrl: SPOTIFY_API, ...opts });
     this.cached = createCachedFetcher(opts.cacheStore);
+    this.cacheStore = opts.cacheStore;
   }
 
   private async notFound<T>(what: string, id: string, p: Promise<T>): Promise<T> {
@@ -58,6 +61,12 @@ export class SpotifyApi {
   async me(signal?: AbortSignal) {
     const u = await this.http.get("me", { schema: userSchema, signal });
     return { id: u.id, displayName: u.display_name ?? u.id };
+  }
+
+  /** ID del usuario (una sola petición por sesión): sirve para saber qué playlists son suyas. */
+  userId(): Promise<string> {
+    this.meP ??= this.me().catch((e) => { this.meP = null; throw e; });
+    return this.meP.then((m) => m.id);
   }
 
   /* ───────── Catálogo ───────── */
@@ -107,10 +116,11 @@ export class SpotifyApi {
       const p = await this.http.get(`playlists/${encodeURIComponent(id)}`, { schema: playlistSchema, signal });
       const paging = p.items ?? p.tracks;
       // `items` solo llega en playlists propias o colaborativas (Development Mode).
-      if (!paging) return { ...mapPlaylist(p), tracks: [], tracksRestricted: true };
+      const uid = await this.userId().catch(() => undefined);
+      if (!paging) return { ...mapPlaylist(p, [], uid), tracks: [], tracksRestricted: true };
       // Solo la primera página: el resto se pide al hacer scroll (`playlistTracks`).
       const tracks = tracksFrom(paging.items.map((e) => e.item ?? e.track));
-      const base = mapPlaylist(p, tracks.map((t) => t.id));
+      const base = mapPlaylist(p, tracks.map((t) => t.id), uid);
       return { ...base, trackCount: paging.total ?? tracks.length, tracks };
     }));
   }
@@ -163,8 +173,11 @@ export class SpotifyApi {
 
   async playlists(req?: PageRequest): Promise<Page<Playlist>> {
     const offset = offsetOf(req), limit = limitOf(req);
-    const r = await this.http.get("me/playlists", { query: { limit, offset }, schema: pagingSchema(z.unknown()), signal: req?.signal });
-    return { items: playlistsFrom(r.items), total: r.total ?? undefined, nextCursor: nextOffset(offset, r.items.length, r.total, r.next) };
+    const [r, uid] = await Promise.all([
+      this.http.get("me/playlists", { query: { limit, offset }, schema: pagingSchema(z.unknown()), signal: req?.signal }),
+      this.userId().catch(() => undefined),
+    ]);
+    return { items: playlistsFrom(r.items, uid), total: r.total ?? undefined, nextCursor: nextOffset(offset, r.items.length, r.total, r.next) };
   }
 
   /** `GET /me/library/contains` (máx. 40 URIs por petición). */
@@ -183,6 +196,23 @@ export class SpotifyApi {
 
   async removeTracks(ids: string[]) {
     for (const part of chunk(ids, LIMITS.libraryUris)) await this.http.delete("me/library", { query: { uris: part.map(uri.track).join(",") } });
+  }
+
+  /** `POST /playlists/{id}/items` (máx. 100 URIs por petición). */
+  async addToPlaylist(playlistId: string, trackIds: string[]) {
+    for (const part of chunk(trackIds, 100)) {
+      await this.http.post(`playlists/${encodeURIComponent(playlistId)}/items`, { body: { uris: part.map(uri.track) } });
+    }
+    await this.cacheStore?.clear(`spotify:playlist:${playlistId}`).catch(() => {});
+  }
+
+  /** `POST /me/playlists`: playlist privada vacía. */
+  async createPlaylist(name: string): Promise<Playlist> {
+    const p = await this.http.post("me/playlists", {
+      body: { name, public: false, description: "Creada con Cartucho Music" },
+      schema: simplifiedPlaylistSchema,
+    });
+    return { ...mapPlaylist(p, [], await this.userId().catch(() => undefined)), canEdit: true };
   }
 
   /* ───────── Personalización ───────── */

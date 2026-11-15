@@ -107,6 +107,18 @@ La configuración necesita el **Client ID** (en Ajustes → Servicios, o `VITE_S
   - En desarrollo no se aplica (`devCsp: null`) para no interferir con el recargado en caliente de Vite.
 - **Instalador:** NSIS por usuario, en español, con bootstrapper de WebView2. No contiene secretos: el Client ID lo introduce el usuario.
 
+## Versión 1.0.1
+- **Playlists:**
+  - `LibraryModule.addToPlaylist` / `createPlaylist`, con la capacidad `library.playlistWrite`.
+  - `Playlist.canEdit` marca las propias o colaborativas: compara `owner.id` con `/me`.
+  - En Spotify requiere los scopes `playlist-modify-*`. Las sesiones antiguas lanzan `MissingPermissionError` y la UI ofrece «Reconectar».
+- **Cola editable de Spotify:** gestionada por Cartucho (`SpotifyPlayback.managed`). Ver VIABILIDAD §1.4.
+- **Actualizador** (`tauri-plugin-updater`):
+  - Configurado en `plugins.updater` de `tauri.conf.json`: clave pública y `latest.json` de la última Release.
+  - El store vive en `features/updates/updater.ts` y la UI en Ajustes → Actualizaciones, con aviso en la barra lateral.
+  - El workflow de Release firma con los secretos `TAURI_SIGNING_PRIVATE_KEY*`.
+- **Retirado:** Explorar, porque Spotify retiró las novedades y las categorías. También la sección Audio y las opciones planificadas que no funcionaban.
+
 ## Separación entre servicios
 - Todas las entidades llevan `provider`, y las rutas de detalle lo incluyen (`/album/:provider/:id`).
 - Las claves de React Query empiezan por el proveedor.

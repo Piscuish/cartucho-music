@@ -10,7 +10,9 @@ import type { Album, Artist, Playlist, ProviderId, Track } from "@/types/music";
 export interface ProviderCapabilities {
   auth: { required: boolean; flow: "pkce" | "musickit" | "none" };
   catalog: { search: boolean; albums: boolean; artists: boolean; playlists: boolean; artistTopTracks: boolean; newReleases: boolean };
-  library: { savedTracks: boolean; albums: boolean; artists: boolean; playlists: boolean; write: boolean };
+  library: { savedTracks: boolean; albums: boolean; artists: boolean; playlists: boolean; write: boolean;
+    /** Añadir canciones a playlists propias o colaborativas, y crear playlists. */
+    playlistWrite: boolean };
   personalization: { recentlyPlayed: boolean; topArtists: boolean; recommendations: boolean };
   playback: {
     /** Reproducción dentro de la app (SDK con DRM). */
@@ -94,6 +96,10 @@ export interface LibraryModule {
   /** Requiere `capabilities.library.write`. */
   saveTracks(ids: string[]): Promise<void>;
   removeTracks(ids: string[]): Promise<void>;
+  /** Requiere `capabilities.library.playlistWrite` y una playlist con `canEdit`. */
+  addToPlaylist(playlistId: string, trackIds: string[]): Promise<void>;
+  /** Crea una playlist privada vacía. Requiere `capabilities.library.playlistWrite`. */
+  createPlaylist(name: string): Promise<Playlist>;
 }
 
 export interface PersonalizationModule {

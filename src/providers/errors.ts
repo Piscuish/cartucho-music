@@ -49,8 +49,21 @@ export class PremiumRequiredError extends Error {
   }
 }
 
+/** La sesión no incluye un permiso que la acción necesita: hay que reconectar el servicio. */
+export class MissingPermissionError extends Error {
+  readonly provider: ProviderId;
+  readonly scope: string;
+  constructor(provider: ProviderId, scope: string) {
+    super(`Falta el permiso ${scope}`);
+    this.name = "MissingPermissionError";
+    this.provider = provider;
+    this.scope = scope;
+  }
+}
+
 /** Mensaje legible para el usuario a partir de cualquier error. */
 export function describeError(err: unknown): string {
+  if (err instanceof MissingPermissionError) return "Reconecta Spotify para que Cartucho pueda editar tus playlists.";
   if (err instanceof PremiumRequiredError) return "Necesitas Spotify Premium para controlar la reproducción.";
   if (err instanceof UnsupportedOperationError) return "Este servicio no permite esa acción.";
   if (err instanceof Error && err.name === "ForbiddenError") return "El servicio ha denegado la acción para esta cuenta.";

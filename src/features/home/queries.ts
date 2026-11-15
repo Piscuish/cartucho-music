@@ -37,5 +37,3 @@ export const useTopArtists = () =>
 export const useRecommendations = () =>
   usePerProvider("recommendations", (c) => c.personalization.recommendations, (p, s) => p.personalization.getRecommendations(12, s));
 
-export const useNewReleases = () =>
-  usePerProvider("new-releases", (c) => c.catalog.newReleases, async (p, s) => (await p.catalog.getNewReleases({ limit: 20, signal: s })).items);

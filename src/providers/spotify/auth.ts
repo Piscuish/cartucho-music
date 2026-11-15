@@ -10,6 +10,8 @@ export const SPOTIFY_SCOPES = [
   "user-follow-read",
   "playlist-read-private",
   "playlist-read-collaborative",
+  "playlist-modify-public",
+  "playlist-modify-private",
   "user-read-recently-played",
   "user-top-read",
   "user-read-playback-state",
@@ -87,6 +89,12 @@ export class SpotifyAuth implements AuthModule {
       if (isAuthFailure(e)) return false;
       throw e;
     }
+  }
+
+  /** ¿La sesión actual concede estos permisos? (las sesiones antiguas pueden no tenerlos) */
+  hasScopes(...scopes: string[]): boolean {
+    const granted = new Set((this.token?.scope ?? "").split(/\s+/));
+    return scopes.every((s) => granted.has(s));
   }
 
   /** Token válido para la Web API y el Web Playback SDK. */

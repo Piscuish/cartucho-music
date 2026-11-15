@@ -24,6 +24,7 @@ export function createFakeSpotify() {
   const devices = [{ id: "dev1", name: "Móvil", type: "Smartphone", is_active: false, is_restricted: false, volume_percent: 60 }];
   let player: null | { is_playing: boolean; progress_ms: number; item: unknown; device: typeof devices[number]; shuffle_state: boolean; repeat_state: string; queue: unknown[] } = null;
   const calls: { method: string; path: string; query: URLSearchParams; body: unknown }[] = [];
+  const playlistAdds: { id: string; uris: string[] }[] = [];
   /** Respuestas forzadas por ruta para simular errores. */
   const overrides = new Map<string, () => Response>();
 
@@ -62,6 +63,16 @@ export function createFakeSpotify() {
       if (!a) return json({ error: { status: 404, message: "Non existing id" } }, 404);
       return json({ ...a.meta, tracks: paging(a.tracks, 0, 50) });
     }
+    const plAdd = path.match(/^playlists\/([^/]+)\/items$/);
+    if (method === "POST" && plAdd) {
+      const uris = (body?.uris ?? []) as string[];
+      if (uris.length > 100) return json({ error: { status: 400, message: "Too many" } }, 400);
+      playlistAdds.push({ id: plAdd[1], uris });
+      return json({ snapshot_id: "s1" }, 201);
+    }
+    if (method === "POST" && path === "me/playlists") {
+      return json({ id: "plNew", name: body.name, description: body.description, images: [], owner: { id: "u1", display_name: "Usuaria" }, uri: "spotify:playlist:plNew", collaborative: false, items: { total: 0 } }, 201);
+    }
     const plItems = path.match(/^playlists\/([^/]+)\/items$/);
     if (method === "GET" && plItems) {
       if (plItems[1] !== "pl1") return json({ error: { status: 403, message: "Forbidden" } }, 403);
@@ -80,6 +91,11 @@ export function createFakeSpotify() {
     if (method === "GET" && arMatch) return arMatch[1] === "ar1" ? json({ ...artist("ar1", "Artista Uno"), genres: ["indie"], images: [img(320)] }) : json({ error: { status: 404 } }, 404);
     if (method === "GET" && path === "artists/ar1/albums") return json(paging(Object.values(albums).map((a) => a.meta), offset, limit));
 
+    const trackMatch = path.match(/^tracks\/([^/]+)$/);
+    if (method === "GET" && trackMatch) {
+      const [al, n] = trackMatch[1].split("-t");
+      return albums[al] ? json(fullTrack(al, Number(n))) : json({ error: { status: 404 } }, 404);
+    }
     if (method === "GET" && path === "me/tracks") {
       const saved = [...library].map((u) => u.split(":")[2]).flatMap((id) => { const [al] = id.split("-"); return albums[al] ? [{ added_at: "2026-01-01", track: fullTrack(al, Number(id.split("-t")[1])) }] : []; });
       return json(paging(saved, offset, limit));
@@ -120,7 +136,7 @@ export function createFakeSpotify() {
       } else if (body?.uris) {
         const list = (body.uris as string[]).map((u) => { const id = u.split(":")[2]; const [al, n] = id.split("-t"); return fullTrack(al, Number(n)); });
         const start = body.offset?.position ?? 0;
-        player = { is_playing: true, progress_ms: 0, item: list[start], device, shuffle_state: false, repeat_state: "off", queue: list.slice(start + 1) };
+        player = { is_playing: true, progress_ms: body.position_ms ?? 0, item: list[start], device, shuffle_state: player?.shuffle_state ?? false, repeat_state: "off", queue: list.slice(start + 1) };
       } else if (player) {
         player.is_playing = true;
       }
@@ -155,6 +171,7 @@ export function createFakeSpotify() {
   return {
     fetch: fetch as unknown as typeof globalThis.fetch,
     calls,
+    playlistAdds,
     overrides,
     library,
     get player() { return player; },

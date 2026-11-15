@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { motion } from "framer-motion";
 import {
-  Compass, Disc3, Heart, House, Library, ListMusic, ListOrdered, MicVocal, Music2, Search, Settings, type LucideIcon,
+  Disc3, Download, Heart, House, Library, ListMusic, ListOrdered, MicVocal, Music2, Search, Settings, type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { LogoMark, Wordmark } from "@/components/Logo";
@@ -10,13 +10,13 @@ import type { ConnectionStatus } from "@/providers/types";
 import type { ProviderId } from "@/types/music";
 import { useConnectionStatus, useVisibleServices } from "@/hooks/useProviders";
 import { useAppearance, type NavId } from "@/stores/appearance";
+import { useUpdates } from "@/features/updates/updater";
 
 interface NavItem { to: string; label: string; icon: LucideIcon; end?: boolean; id?: NavId }
 
 export const navGroups: { title?: string; items: NavItem[] }[] = [
   { items: [
     { to: "/", label: "Inicio", icon: House, end: true },
-    { to: "/explorar", label: "Explorar", icon: Compass, id: "explore" },
     { to: "/buscar", label: "Buscar", icon: Search, id: "search" },
   ] },
   { title: "Tu música", items: [
@@ -69,6 +69,7 @@ export function Sidebar() {
       <div className={clsx("shrink-0 border-t border-line", rail ? "w-full px-3 py-3" : "p-3")}>
         {!rail && <div className="eyebrow px-3 pt-1 pb-2">Servicios</div>}
         {services.map((p) => <ServiceLink key={p.id} id={p.id} rail={rail} />)}
+        <UpdateNotice rail={rail} />
         <SidebarLink item={{ to: "/ajustes", label: "Configuración", icon: Settings }} rail={rail} />
       </div>
     </motion.aside>
@@ -107,6 +108,25 @@ function ServiceLink({ id, rail }: { id: ProviderId; rail: boolean }) {
           <span className="block truncate text-[11.5px] text-muted">{label}</span>
         </span>
       )}
+    </NavLink>
+  );
+}
+
+/** Aparece solo cuando hay una versión nueva disponible. */
+function UpdateNotice({ rail }: { rail: boolean }) {
+  const status = useUpdates((s) => s.status);
+  if (status.state !== "available" && status.state !== "downloading" && status.state !== "installing") return null;
+  return (
+    <NavLink
+      to="/ajustes/actualizaciones"
+      title={`Actualización disponible: ${status.version}`}
+      className={clsx(
+        "mb-1 flex items-center gap-3 rounded-[var(--radius-control)] bg-accent/15 py-2 text-[13px] font-medium text-accent transition-colors hover:bg-accent/25",
+        rail ? "justify-center" : "px-3",
+      )}
+    >
+      <Download className="size-[18px] shrink-0" />
+      {!rail && <span className="min-w-0 flex-1 truncate">Actualizar a {status.version}</span>}
     </NavLink>
   );
 }

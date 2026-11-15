@@ -115,6 +115,18 @@ export function runProviderContract(name: string, make: () => MusicProvider, fx:
       }
     });
 
+    it("crea una playlist editable y le añade canciones", async () => {
+      const p = make();
+      if (!p.capabilities.library.playlistWrite) {
+        await expect(p.library.createPlaylist("x")).rejects.toBeInstanceOf(UnsupportedOperationError);
+        return;
+      }
+      const created = await p.library.createPlaylist("Prueba de Cartucho");
+      expect(created).toMatchObject({ provider: p.id, name: "Prueba de Cartucho", canEdit: true });
+      const album = await p.catalog.getAlbum(fx.albumId);
+      await expect(p.library.addToPlaylist(created.id, [album.tracks[0].id])).resolves.toBeUndefined();
+    });
+
     it("guarda y quita canciones de la biblioteca", async () => {
       const p = make();
       if (!p.capabilities.library.write) return;

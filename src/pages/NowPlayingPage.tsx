@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Heart, MicVocal, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward } from "lucide-react";
+import { ChevronDown, Disc3, Heart, MicVocal, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward } from "lucide-react";
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Cover } from "@/components/Cover";
@@ -164,27 +164,18 @@ function NowPlayingView({ t }: { t: Track }) {
     </div>
   );
 
-  const lyrics = (
-    <div className={clsx("glass flex flex-col rounded-[calc(var(--radius-card)*1.3)] p-6", upNext.length ? "min-h-[180px]" : "min-h-[260px]")}>
+  const hasLyrics = caps.lyrics.synced || caps.lyrics.plain;
+  const lyrics = album && (
+    <div className="glass flex flex-col rounded-[calc(var(--radius-card)*1.3)] p-6">
       <div className="mb-4 flex items-center gap-2">
-        <MicVocal className="size-4 text-accent" />
-        <span className="eyebrow">Letras</span>
+        {hasLyrics ? <MicVocal className="size-4 text-accent" /> : <Disc3 className="size-4 text-accent" />}
+        <span className="eyebrow">{hasLyrics ? "Letras" : "Detalles"}</span>
       </div>
-      {caps.lyrics.synced || caps.lyrics.plain ? null : (
-        <div className="m-auto max-w-xs text-center">
-          <p className="font-display text-[18px] font-semibold">Letras no disponibles</p>
-          <p className="mt-2 text-[13px] leading-relaxed text-muted">
-            {providers[t.provider].name} no ofrece letras a aplicaciones de terceros. Cartucho Music solo las mostrará si se integra una fuente con licencia.
-          </p>
-        </div>
-      )}
-      {album && (
-        <div className="mt-auto border-t border-line pt-4 text-[12.5px] text-muted">
-          <div className="flex justify-between"><span>Álbum</span><span className="text-fg">{album.name}</span></div>
-          <div className="mt-1.5 flex justify-between"><span>Pista</span><span className="text-fg">{album.tracks.findIndex((x) => x.id === t.id) + 1} de {album.tracks.length}</span></div>
-          <div className="mt-1.5 flex justify-between"><span>Reproducción</span><span className="text-accent">{state.mode === "preview" ? "Vista previa · sin audio" : state.mode === "remote" ? `En ${state.device?.name ?? "otro dispositivo"}` : "En Cartucho"}</span></div>
-        </div>
-      )}
+      <div className="text-[12.5px] text-muted">
+        <div className="flex justify-between"><span>Álbum</span><span className="text-fg">{album.name}</span></div>
+        <div className="mt-1.5 flex justify-between"><span>Pista</span><span className="text-fg">{album.tracks.findIndex((x) => x.id === t.id) + 1} de {album.tracks.length}</span></div>
+        <div className="mt-1.5 flex justify-between"><span>Reproducción</span><span className="text-accent">{state.mode === "preview" ? "Vista previa · sin audio" : state.mode === "remote" ? `En ${state.device?.name ?? "otro dispositivo"}` : "En Cartucho"}</span></div>
+      </div>
     </div>
   );
 

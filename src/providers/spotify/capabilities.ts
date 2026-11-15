@@ -4,7 +4,7 @@ import type { ProviderCapabilities } from "../types";
 export const spotifyCapabilities: ProviderCapabilities = {
   auth: { required: true, flow: "pkce" },
   catalog: { search: true, albums: true, artists: true, playlists: true, artistTopTracks: false, newReleases: false },
-  library: { savedTracks: true, albums: true, artists: true, playlists: true, write: true },
+  library: { savedTracks: true, albums: true, artists: true, playlists: true, write: true, playlistWrite: true },
   personalization: { recentlyPlayed: true, topArtists: true, recommendations: false },
   playback: {
     inApp: "unverified",
@@ -15,6 +15,7 @@ export const spotifyCapabilities: ProviderCapabilities = {
     shuffle: true,
     repeat: true,
   },
-  queue: { read: true, add: true, remove: false, reorder: false },
+  // Quitar y reordenar: la Web API no lo permite; Cartucho gestiona la lista y la reenvía (playback.ts).
+  queue: { read: true, add: true, remove: true, reorder: true },
   lyrics: { plain: false, synced: false },
 };

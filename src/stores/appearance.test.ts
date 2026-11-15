@@ -25,6 +25,10 @@ describe("parseAppearance", () => {
     expect(parseAppearance({ dynamicBackground: true }).bgStyle).toBe("aurora");
   });
 
+  it("ignora entradas de barra lateral que ya no existen sin perder las demás", () => {
+    expect(parseAppearance({ hiddenNav: ["explore", "albums", "albums"] }).hiddenNav).toEqual(["albums"]);
+  });
+
   it("rechaza un acento personalizado que no sea #RRGGBB", () => {
     expect(parseAppearance({ customAccent: "red; background:url(x)" }).customAccent).toBe(defaults.customAccent);
     expect(parseAppearance({ customAccent: "#12ab9F" }).customAccent).toBe("#12ab9F");
@@ -74,10 +78,10 @@ describe("store de apariencia", () => {
   });
 
   it("oculta y muestra entradas de la barra lateral", () => {
-    useAppearance.getState().toggleNav("explore", false);
-    useAppearance.getState().toggleNav("explore", false);
-    expect(useAppearance.getState().hiddenNav).toEqual(["explore"]);
-    useAppearance.getState().toggleNav("explore", true);
+    useAppearance.getState().toggleNav("search", false);
+    useAppearance.getState().toggleNav("search", false);
+    expect(useAppearance.getState().hiddenNav).toEqual(["search"]);
+    useAppearance.getState().toggleNav("search", true);
     expect(useAppearance.getState().hiddenNav).toEqual([]);
   });
 });

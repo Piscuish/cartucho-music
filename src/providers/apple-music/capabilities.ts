@@ -4,7 +4,7 @@ import type { ProviderCapabilities } from "../types";
 export const appleMusicCapabilities: ProviderCapabilities = {
   auth: { required: true, flow: "musickit" },
   catalog: { search: true, albums: true, artists: true, playlists: true, artistTopTracks: true, newReleases: true },
-  library: { savedTracks: true, albums: true, artists: true, playlists: true, write: true },
+  library: { savedTracks: true, albums: true, artists: true, playlists: true, write: true, playlistWrite: true },
   personalization: { recentlyPlayed: true, topArtists: true, recommendations: true },
   playback: {
     inApp: "unverified",

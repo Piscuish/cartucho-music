@@ -1,6 +1,6 @@
 [package]
 name = "cartucho-music"
-version = "1.0.0"
+version = "1.0.1"
 description = "Cartucho Music — cliente musical de escritorio"
 edition = "2021"
 
@@ -30,3 +30,5 @@ tauri-plugin-notification = "2.8.1"
 tauri-plugin-autostart = "2.7.0"
 tauri-plugin-window-state = "2.5.0"
 tauri-plugin-single-instance = "2.5.5"
+tauri-plugin-updater = "2.14.1"
+tauri-plugin-process = "2.4.0"

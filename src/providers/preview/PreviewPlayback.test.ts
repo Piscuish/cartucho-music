@@ -113,8 +113,9 @@ describe("PreviewPlayback", () => {
     await expect(pb.play({ kind: "album", id: "x" })).rejects.toThrow(/mezclar/);
   });
 
-  it("Spotify: la cola admite añadir pero no reordenar ni quitar", async () => {
-    const pb = make(spotifyCapabilities);
+  it("respeta una cola de solo lectura si el servicio la declara así", async () => {
+    const readOnly = { ...spotifyCapabilities, queue: { read: true, add: true, remove: false, reorder: false } };
+    const pb = make(readOnly);
     await pb.play({ kind: "tracks", trackIds: ["t1"] });
     await pb.addToQueue("t3");
     expect((await pb.getQueue()).upNext.map((t) => t.id)).toEqual(["t3"]);

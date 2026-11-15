@@ -5,8 +5,8 @@
 //! - `spotify`: OAuth PKCE con redirección loopback (Fase 3).
 //! - `desktop`: bandeja, cerrar a bandeja y arranque minimizado (Fase 7).
 //!
-//! Plugins de la Fase 7: instancia única, estado de ventana, atajos globales,
-//! notificaciones e inicio con el sistema.
+//! Plugins: instancia única, estado de ventana, atajos globales, notificaciones,
+//! inicio con el sistema, actualizaciones y reinicio.
 
 mod db;
 mod desktop;
@@ -32,6 +32,9 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
+        // Actualizaciones firmadas desde GitHub Releases (ver plugins.updater en tauri.conf.json).
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec![desktop::AUTOSTART_ARG]),

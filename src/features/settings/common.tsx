@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { PhasePill, Toggle } from "@/components/ui";
 
 export function SectionTitle({ title, description, children }: { title: string; description?: string; children?: ReactNode }) {
   return (
@@ -22,17 +21,5 @@ export function Row({ label, hint, children }: { label: string; hint?: ReactNode
       </div>
       <div className="shrink-0">{children}</div>
     </div>
-  );
-}
-
-/** Opción planificada para una fase posterior: visible, pero deshabilitada y marcada. */
-export function PlannedRow({ label, hint, phase }: { label: string; hint?: string; phase: number }) {
-  return (
-    <Row label={label} hint={hint}>
-      <div className="flex items-center gap-3">
-        <PhasePill phase={phase} />
-        <Toggle label={label} checked={false} onChange={() => {}} disabled />
-      </div>
-    </Row>
   );
 }

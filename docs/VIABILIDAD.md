@@ -77,7 +77,16 @@ Hay dos mecanismos oficiales:
 
 ### 1.4 Cola
 - `GET /me/player/queue` permite leer la cola y `POST /me/player/queue` permite añadir.
-- **No existen endpoints para reordenar ni eliminar.** La UI de cola de Spotify será de solo lectura, con un botón "Añadir".
+- **No existen endpoints para reordenar ni eliminar.**
+- **Solución (1.0.1):** Cartucho gestiona la lista. Al quitar o reordenar:
+  - Toma la canción actual y las siguientes: el álbum o la playlist completos si los lanzó Cartucho, o si no la cola que informa Spotify.
+  - Aplica el cambio.
+  - Reenvía la lista con `PUT /me/player/play` (`uris`, `offset: 0`, `position_ms` de la canción actual).
+- **Efectos de esta solución:**
+  - Puede notarse un corte breve al aplicar cada cambio.
+  - El aleatorio se desactiva para que no desordene la lista.
+  - Las canciones que otras apps de Spotify añadan a su cola nativa quedan fuera del control de Cartucho.
+  - Como máximo se gestionan 100 canciones.
 
 ### 1.5 Límites de solicitudes
 - Ventana móvil de 30 segundos. Al superarla, la API responde `429` con `Retry-After`.

@@ -58,6 +58,8 @@ export interface Playlist extends BaseEntity {
   /** IDs conocidos (puede estar vacío si el servicio no permite listar el contenido). */
   trackIds: string[];
   trackCount: number;
+  /** El usuario puede añadir canciones (propia o colaborativa). */
+  canEdit?: boolean;
 }
 
 export type MediaEntity = Track | Album | Artist | Playlist;

@@ -1,20 +1,21 @@
 import clsx from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, Cable, Info, Keyboard, Palette, PlayCircle, Shield, SlidersHorizontal, Volume2, type LucideIcon } from "lucide-react";
+import { Bell, Cable, Download, Info, Keyboard, Palette, PlayCircle, Shield, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
 import { NavLink, Navigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui";
 import { AppearanceSection } from "@/features/settings/AppearanceSection";
+import { UpdatesSection } from "@/features/updates/UpdatesSection";
 import {
-  AboutSection, AudioSection, GeneralSection, NotificationsSection, PlaybackSection, PrivacySection, ServicesSection, ShortcutsSection,
+  AboutSection, GeneralSection, NotificationsSection, PlaybackSection, PrivacySection, ServicesSection, ShortcutsSection,
 } from "@/features/settings/sections";
 
 const sections: { id: string; label: string; icon: LucideIcon; Component: ComponentType }[] = [
   { id: "general", label: "General", icon: SlidersHorizontal, Component: GeneralSection },
+  { id: "actualizaciones", label: "Actualizaciones", icon: Download, Component: UpdatesSection },
   { id: "apariencia", label: "Apariencia", icon: Palette, Component: AppearanceSection },
   { id: "servicios", label: "Servicios conectados", icon: Cable, Component: ServicesSection },
   { id: "reproduccion", label: "Reproducción", icon: PlayCircle, Component: PlaybackSection },
-  { id: "audio", label: "Audio", icon: Volume2, Component: AudioSection },
   { id: "atajos", label: "Atajos de teclado", icon: Keyboard, Component: ShortcutsSection },
   { id: "notificaciones", label: "Notificaciones", icon: Bell, Component: NotificationsSection },
   { id: "privacidad", label: "Privacidad", icon: Shield, Component: PrivacySection },
