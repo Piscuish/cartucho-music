@@ -1,0 +1,5 @@
+# Finales de línea LF en el repositorio (los scripts y la configuración de Tauri los esperan así).
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.icns binary
