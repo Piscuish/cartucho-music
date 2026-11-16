@@ -35,7 +35,7 @@ export function NowPlayingPage() {
 
   if (!t) {
     return (
-      <div className="fixed inset-0 z-50 grid place-items-center bg-bg text-center">
+      <div className="fixed inset-0 z-50 grid place-items-center bg-bg pt-[var(--titlebar-h)] text-center">
         <div>
           <p className="font-display text-[22px] font-semibold">No hay nada sonando</p>
           <button onClick={() => nav(-1)} className="mt-4 rounded-full border border-line px-4 py-2 text-[13px] hover:bg-hover">Volver</button>
@@ -185,7 +185,7 @@ function NowPlayingView({ t }: { t: Track }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 40 }}
       transition={{ type: "spring", stiffness: 220, damping: 30 }}
-      className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-bg"
+      className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-bg pt-[var(--titlebar-h)]"
     >
       <DynamicBackground intensity={2} styleOverride={npBackground} />
 

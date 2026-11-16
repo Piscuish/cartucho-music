@@ -3,6 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./queryClient";
 import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/layouts/AppShell";
+import { TitleBar } from "@/layouts/TitleBar";
 import { lazy, Suspense } from "react";
 // Inicio se carga de inmediato (es la primera pantalla); el resto, bajo demanda.
 import { HomePage } from "@/pages/HomePage";
@@ -57,6 +58,7 @@ export function App() {
         {/* HashRouter: funciona igual en Vite y en el protocolo de Tauri. */}
         <HashRouter>
           <AppRoutes />
+          <TitleBar />
         </HashRouter>
       </MotionConfig>
     </QueryClientProvider>

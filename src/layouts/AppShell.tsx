@@ -22,7 +22,7 @@ export function AppShell() {
     : { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } };
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden bg-bg">
+    <div className="relative flex h-full flex-col overflow-hidden bg-bg pt-[var(--titlebar-h)]">
       <DynamicBackground />
       <div className="relative flex min-h-0 flex-1">
         <Sidebar />
