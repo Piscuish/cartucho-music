@@ -27,8 +27,14 @@ pub fn run() {
     tauri::Builder::default()
         // Debe ir primero: una segunda ejecución solo trae al frente la ventana existente.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| desktop::show_main(app)))
-        // Recuerda tamaño, posición y maximizado (no la visibilidad: eso lo decide el arranque).
-        .plugin(tauri_plugin_window_state::Builder::default().with_state_flags(StateFlags::all() & !StateFlags::VISIBLE).build())
+        // Recuerda tamaño, posición y maximizado. Ni la visibilidad (la decide el arranque) ni el
+        // marco: desde 1.0.3 la ventana no tiene marco de Windows, y restaurar el guardado por
+        // versiones anteriores volvería a mostrar la barra nativa encima de la propia.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(StateFlags::all() & !StateFlags::VISIBLE & !StateFlags::DECORATIONS)
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
@@ -52,6 +58,10 @@ pub fn run() {
                 if let Some(w) = app.get_webview_window("main") {
                     let _ = w.hide();
                 }
+            }
+            // Por si un estado guardado antiguo ya restauró el marco nativo: siempre sin él.
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.set_decorations(false);
             }
             app.manage(db);
             desktop::build_tray(app.handle())?;
