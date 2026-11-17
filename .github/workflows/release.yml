@@ -4,6 +4,9 @@
 #   git tag v1.0.1
 #   git push origin v1.0.1
 #
+# También se puede lanzar sin Git: Actions → Release → «Run workflow» sobre main. Entonces
+# crea él mismo la etiqueta v<versión de tauri.conf.json> en ese commit, tras pasar las pruebas.
+#
 # La versión de la etiqueta debe coincidir con la de `src-tauri/tauri.conf.json`.
 #
 # Requiere dos secretos del repositorio (Settings → Secrets and variables → Actions):
@@ -12,10 +15,12 @@
 # Con ellos se firma el instalador y se publica `latest.json` para las actualizaciones automáticas.
 name: Release
 
-# Solo con etiquetas: lanzarlo sin etiqueta crearía una Release con el nombre de la rama.
+# Con una etiqueta, o a mano desde main (la etiqueta se deduce de la versión de la app;
+# nunca se usa el nombre de la rama).
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -27,6 +32,19 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+
+      - name: Determinar la etiqueta de la versión
+        id: tag
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            if ("${{ github.ref }}" -ne "refs/heads/main") { throw "Lánzalo sobre la rama main." }
+            $tag = "v" + (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          } else {
+            $tag = "${{ github.ref_name }}"
+          }
+          Write-Output "Etiqueta: $tag"
+          "tag=$tag" >> $env:GITHUB_OUTPUT
 
       - uses: actions/setup-node@v4
         with:
@@ -73,7 +91,7 @@ jobs:
         shell: pwsh
         run: |
           $app = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
-          $tag = "${{ github.ref_name }}".TrimStart("v")
+          $tag = "${{ steps.tag.outputs.tag }}".TrimStart("v")
           if ($app -ne $tag) { throw "La etiqueta v$tag no coincide con la versión $app de tauri.conf.json" }
 
       - name: Pruebas antes de publicar
@@ -81,6 +99,28 @@ jobs:
           npm run build
           npm run installer:build
           npm run check
+
+      # Solo al lanzarlo a mano: crea la etiqueta en este commit, ya probado. Si existe en este
+      # mismo commit (reintento) se reutiliza; si apunta a otro, se para para no pisarla.
+      # Una etiqueta subida con GITHUB_TOKEN no vuelve a disparar este workflow.
+      - name: Crear la etiqueta
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.tag.outputs.tag }}"
+          $remote = git ls-remote origin "refs/tags/$tag"
+          if ($remote) {
+            $sha = git ls-remote origin "refs/tags/$tag^{}"
+            if (-not $sha) { $sha = $remote }
+            if (-not ("$sha".StartsWith("${{ github.sha }}"))) {
+              throw "La etiqueta $tag ya existe en otro commit. Sube la versión antes de lanzar otra Release."
+            }
+            Write-Output "La etiqueta $tag ya existe en este commit: se reutiliza."
+          } else {
+            git tag $tag
+            git push origin $tag
+            if ($LASTEXITCODE -ne 0) { throw "No se pudo crear la etiqueta $tag." }
+          }
 
       - name: Compilar y crear el borrador de Release
         id: tauri
@@ -90,12 +130,12 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "Cartucho Music ${{ github.ref_name }}"
+          tagName: ${{ steps.tag.outputs.tag }}
+          releaseName: "Cartucho Music ${{ steps.tag.outputs.tag }}"
           releaseBody: |
             Para Windows 10/11 (x64). Se instala para el usuario actual, sin permisos de administrador.
 
-            **Descarga `Cartucho-Music-${{ github.ref_name }}-Instalador.exe`.** El otro instalador (`*_x64-setup.exe`) es el que usa el actualizador automático de la app; también sirve para instalar a mano.
+            **Descarga `Cartucho-Music-${{ steps.tag.outputs.tag }}-Instalador.exe`.** El otro instalador (`*_x64-setup.exe`) es el que usa el actualizador automático de la app; también sirve para instalar a mano.
 
             Los instaladores no están firmados: Windows SmartScreen puede mostrar un aviso. Pulsa «Más información → Ejecutar de todas formas».
           releaseDraft: true
@@ -127,7 +167,7 @@ jobs:
         run: |
           $exe = Get-ChildItem "installer/src-tauri/target/release/*.exe" | Sort-Object Length -Descending | Select-Object -First 1
           if (-not $exe) { throw "No se encontró el instalador propio compilado." }
-          $name = "Cartucho-Music-${{ github.ref_name }}-Instalador.exe"
+          $name = "Cartucho-Music-${{ steps.tag.outputs.tag }}-Instalador.exe"
           Copy-Item $exe.FullName $name
-          gh release upload "${{ github.ref_name }}" $name --clobber --repo "${{ github.repository }}"
+          gh release upload "${{ steps.tag.outputs.tag }}" $name --clobber --repo "${{ github.repository }}"
           if ($LASTEXITCODE -ne 0) { throw "No se pudo subir $name a la Release." }
