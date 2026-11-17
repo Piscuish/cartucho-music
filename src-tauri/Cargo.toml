@@ -1,6 +1,6 @@
 [package]
 name = "cartucho-music"
-version = "1.0.8"
+version = "1.0.9"
 description = "Cartucho Music — cliente musical de escritorio"
 edition = "2021"
 
