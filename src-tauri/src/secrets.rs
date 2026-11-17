@@ -1,5 +1,6 @@
 //! Almacén seguro de credenciales sobre el keychain del sistema operativo
-//! (Windows Credential Manager · macOS Keychain · Secret Service en Linux).
+//! (Windows Credential Manager · macOS Keychain · Secret Service en Linux · en Android,
+//! SharedPreferences cifradas con una clave del Android Keystore).
 //!
 //! Solo se aceptan claves de una lista cerrada, para que el frontend no pueda
 //! usar el keychain del usuario como almacén genérico.
@@ -18,11 +19,38 @@ pub const ALLOWED_KEYS: &[&str] = &[
 
 const MAX_SECRET_LEN: usize = 16 * 1024;
 
-fn entry(key: &str) -> AppResult<keyring::Entry> {
+#[cfg(not(target_os = "android"))]
+type Entry = keyring::Entry;
+#[cfg(target_os = "android")]
+type Entry = keyring_core::Entry;
+
+fn entry(key: &str) -> AppResult<Entry> {
     if !ALLOWED_KEYS.contains(&key) {
         return Err(AppError::Invalid(format!("clave de secreto no permitida: {key}")));
     }
+    new_entry(key)
+}
+
+#[cfg(not(target_os = "android"))]
+fn new_entry(key: &str) -> AppResult<Entry> {
     Ok(keyring::Entry::new(SERVICE, key)?)
+}
+
+/// En Android el almacén por defecto hay que registrarlo una vez (Tauri ya inicializó el
+/// contexto de la app que necesita). Si falla, se devuelve el error en cada intento.
+#[cfg(target_os = "android")]
+fn new_entry(key: &str) -> AppResult<Entry> {
+    use std::sync::OnceLock;
+    static STORE: OnceLock<Result<(), String>> = OnceLock::new();
+    STORE
+        .get_or_init(|| {
+            android_native_keyring_store::Store::new()
+                .map(|store| keyring_core::set_default_store(store))
+                .map_err(|e| e.to_string())
+        })
+        .clone()
+        .map_err(|e| AppError::Invalid(format!("almacén seguro de Android no disponible: {e}")))?;
+    Ok(keyring_core::Entry::new(SERVICE, key)?)
 }
 
 pub fn get(key: &str) -> AppResult<Option<String>> {

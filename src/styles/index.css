@@ -20,6 +20,10 @@
   --gap: 28px;
   --card-w: 184px;
   --page-px: 36px;
+
+  /* Márgenes del sistema (barra de estado y de gestos en Android). */
+  --safe-top: 0px;
+  --safe-bottom: 0px;
 }
 
 [data-theme="dark"] {
@@ -89,6 +93,22 @@
 }
 [data-glass="strong"][data-theme="dark"] { --glass-bg: rgb(22 19 30 / 0.4); }
 [data-glass="strong"][data-theme="light"] { --glass-bg: rgb(255 253 250 / 0.45); }
+
+/* Teléfono: márgenes y tarjetas más pequeños; respeta la barra de estado y la de gestos. */
+html[data-platform="mobile"] {
+  --page-px: 16px;
+  --gap: 22px;
+  --card-w: 148px;
+  --radius-card: 16px;
+  /* En el APK, MainActivity ya aparta el contenido de las barras del sistema: suelen ser 0. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --titlebar-h: var(--safe-top);
+}
+html[data-platform="mobile"] body {
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
 
 @theme inline {
   --color-bg: var(--bg);

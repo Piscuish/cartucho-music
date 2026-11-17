@@ -20,8 +20,7 @@ import { connectSpotify } from "@/providers/spotify/connector";
 
 export function PlayerBar() {
   const style = useAppearance((s) => s.playerStyle);
-  const { state, toggle, next, previous, seek, setVolume, toggleMute, toggleShuffle, cycleRepeat, toast: notice, clearToast } = usePlayer();
-  const openDevices = useUi((s) => s.setDevicePickerOpen);
+  const { state, toggle, next, previous, seek, setVolume, toggleMute, toggleShuffle, cycleRepeat } = usePlayer();
   const position = usePlaybackPosition();
   const nav = useNavigate();
   const loc = useLocation();
@@ -139,34 +138,7 @@ export function PlayerBar() {
     </div>
   );
 
-  const toast: ReactNode = (
-    <AnimatePresence>
-      {notice && (
-        <motion.div
-          key={notice.message}
-          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
-          role={notice.kind === "error" ? "alert" : "status"}
-          className={clsx(
-            "glass absolute -top-14 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full px-4 py-2 text-[12.5px] whitespace-nowrap shadow-[var(--shadow)]",
-            notice.kind === "error" && "border-red-500/30",
-          )}
-        >
-          {notice.message}
-          {notice.action === "reconnect" && (
-            <button onClick={() => { clearToast(); void connectSpotify().catch((e) => console.warn("[spotify]", e)); }} className="rounded-full bg-accent px-3 py-1 font-semibold text-on-accent">
-              Reconectar
-            </button>
-          )}
-          {notice.action === "devices" && (
-            <button data-devices-trigger onClick={() => { clearToast(); openDevices(true); }} className="rounded-full bg-accent px-3 py-1 font-semibold text-on-accent">
-              Elegir dispositivo
-            </button>
-          )}
-          <button onClick={clearToast} aria-label="Cerrar"><X className="size-3.5 text-muted" /></button>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+  const toast: ReactNode = <PlayerToast />;
 
   if (style === "minimal") {
     return (
@@ -208,5 +180,41 @@ export function PlayerBar() {
       <div className="flex flex-col items-center gap-1">{transport}{progress}</div>
       {extras}
     </div>
+  );
+}
+
+/** Avisos del reproductor (errores, reconectar, elegir dispositivo). Se coloca dentro de un
+ * contenedor `relative`: aparece justo encima. */
+export function PlayerToast() {
+  const notice = usePlayer((s) => s.toast);
+  const clearToast = usePlayer((s) => s.clearToast);
+  const openDevices = useUi((s) => s.setDevicePickerOpen);
+  return (
+    <AnimatePresence>
+      {notice && (
+        <motion.div
+          key={notice.message}
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+          role={notice.kind === "error" ? "alert" : "status"}
+          className={clsx(
+            "glass absolute -top-14 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full px-4 py-2 text-[12.5px] whitespace-nowrap shadow-[var(--shadow)]",
+            notice.kind === "error" && "border-red-500/30",
+          )}
+        >
+          {notice.message}
+          {notice.action === "reconnect" && (
+            <button onClick={() => { clearToast(); void connectSpotify().catch((e) => console.warn("[spotify]", e)); }} className="rounded-full bg-accent px-3 py-1 font-semibold text-on-accent">
+              Reconectar
+            </button>
+          )}
+          {notice.action === "devices" && (
+            <button data-devices-trigger onClick={() => { clearToast(); openDevices(true); }} className="rounded-full bg-accent px-3 py-1 font-semibold text-on-accent">
+              Elegir dispositivo
+            </button>
+          )}
+          <button onClick={clearToast} aria-label="Cerrar"><X className="size-3.5 text-muted" /></button>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

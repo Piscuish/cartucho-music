@@ -9,6 +9,7 @@ import {
 } from "@/providers/spotify/connector";
 import { describeError } from "@/providers/errors";
 import { openExternal } from "@/utils/external";
+import { IS_MOBILE_APP } from "@/utils/platform";
 
 const meta = providers.spotify;
 
@@ -107,7 +108,7 @@ export function SpotifyCard() {
             {busy ? "Esperando autorización…" : "Conectar con Spotify"}
           </button>
           <p className="text-[11.5px] leading-relaxed text-faint">
-            Se abrirá el navegador en accounts.spotify.com para que inicies sesión. Cartucho Music nunca ve tu contraseña; los tokens se guardan en el almacén seguro de Windows.
+            Se abrirá el navegador en accounts.spotify.com para que inicies sesión{IS_MOBILE_APP ? "; al terminar, vuelve a Cartucho" : ""}. Cartucho Music nunca ve tu contraseña; los tokens se guardan cifrados en el almacén seguro {IS_MOBILE_APP ? "de Android" : "de Windows"}.
             Mientras la app de Spotify esté en Development Mode, solo pueden entrar las cuentas que el propietario haya añadido a su lista (máx. 5) y él necesita Premium.
           </p>
 
@@ -151,6 +152,13 @@ export function SpotifyCard() {
             )}
           </div>
         </div>
+      )}
+
+      {connected && IS_MOBILE_APP && (
+        <p className="mt-4 rounded-[var(--radius-control)] bg-hover px-3.5 py-2.5 text-[12.5px] text-muted">
+          En Android, Cartucho funciona como mando: la música suena en la app oficial de Spotify (Spotify no permite reproducir dentro de otras apps del teléfono).
+          Abre Spotify, reproduce algo una vez y luego elige el dispositivo con el botón de altavoz del reproductor.
+        </p>
       )}
 
       {connected && inApp && (

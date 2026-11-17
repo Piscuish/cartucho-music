@@ -30,6 +30,8 @@ jobs:
     name: Instalador de Windows
     runs-on: windows-latest
     timeout-minutes: 60
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
 
@@ -171,3 +173,12 @@ jobs:
           Copy-Item $exe.FullName $name
           gh release upload "${{ steps.tag.outputs.tag }}" $name --clobber --repo "${{ github.repository }}"
           if ($LASTEXITCODE -ne 0) { throw "No se pudo subir $name a la Release." }
+
+  # Después del de Windows (que crea el borrador de Release): el APK firmado.
+  android:
+    name: APK de Android
+    needs: windows
+    uses: ./.github/workflows/android.yml
+    with:
+      tag: ${{ needs.windows.outputs.tag }}
+    secrets: inherit

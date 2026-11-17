@@ -30,7 +30,7 @@
         "font-src": "'self' data:",
         "img-src": "'self' data: blob: https://i.scdn.co https://*.scdn.co https://*.spotifycdn.com",
         "media-src": "'self' blob: https://*.scdn.co",
-        "connect-src": "'self' ipc: http://ipc.localhost https://api.spotify.com https://*.scdn.co https://*.spotify.com wss://*.spotify.com",
+        "connect-src": "'self' ipc: http://ipc.localhost https://api.github.com https://api.spotify.com https://*.scdn.co https://*.spotify.com wss://*.spotify.com",
         "frame-src": "https://sdk.scdn.co https://*.spotify.com",
         "worker-src": "'self' blob:",
         "object-src": "'none'",

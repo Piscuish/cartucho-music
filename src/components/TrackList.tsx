@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { IS_MOBILE } from "@/utils/platform";
 import { Heart, Play } from "lucide-react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -126,9 +127,11 @@ function TrackRow({ track: t, index: i, tracks, context, showCover = true, showA
     <div
       role="listitem"
       onDoubleClick={playAt}
+      // En el teléfono no hay doble clic: basta un toque en la fila (salvo en enlaces y botones).
+      onClick={IS_MOBILE ? (e) => { if (!(e.target as Element).closest("a,button")) playAt(); } : undefined}
       className={clsx(
-        "group grid items-center gap-4 rounded-[var(--radius-control)] px-3 py-[var(--row-py)] transition-colors hover:bg-hover",
-        showAlbum ? "grid-cols-[28px_minmax(0,1.4fr)_minmax(0,1fr)_auto]" : "grid-cols-[28px_minmax(0,1fr)_auto]",
+        "group grid items-center gap-4 rounded-[var(--radius-control)] px-3 py-[var(--row-py)] transition-colors hover:bg-hover max-sm:gap-3 max-sm:px-1.5",
+        showAlbum ? "grid-cols-[28px_minmax(0,1.4fr)_minmax(0,1fr)_auto] max-sm:grid-cols-[22px_minmax(0,1fr)_auto]" : "grid-cols-[28px_minmax(0,1fr)_auto] max-sm:grid-cols-[22px_minmax(0,1fr)_auto]",
         active && "bg-hover",
       )}
     >
@@ -160,7 +163,7 @@ function TrackRow({ track: t, index: i, tracks, context, showCover = true, showA
       </div>
 
       {showAlbum && (
-        <Link to={routes.album(t.provider, t.albumId)} className="truncate text-[13px] text-muted hover:text-fg hover:underline">
+        <Link to={routes.album(t.provider, t.albumId)} className="truncate text-[13px] text-muted hover:text-fg hover:underline max-sm:hidden">
           {t.albumName}
         </Link>
       )}

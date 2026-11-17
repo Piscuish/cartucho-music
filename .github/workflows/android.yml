@@ -1,0 +1,140 @@
+# APK de Android (arm64, el de casi todos los teléfonos actuales).
+#
+# - Desde el workflow de Release: compila el APK firmado y lo sube a la Release.
+# - A mano (Actions → Android → Run workflow, en cualquier rama): compila un APK de prueba
+#   y lo deja como artefacto de la ejecución.
+#
+# Firma: con los secretos ANDROID_KEYSTORE_BASE64 y ANDROID_KEYSTORE_PASSWORD el APK se firma
+# siempre con la misma clave, así que cada versión se instala encima de la anterior sin borrar
+# datos. Sin ellos se firma con una clave temporal (solo para probar): ese APK no podrá
+# actualizarse con los siguientes y la Release se niega a publicarlo.
+name: Android
+
+on:
+  workflow_dispatch:
+  # Ramas de trabajo: APK de prueba para revisar los cambios antes de pasarlos a main.
+  push:
+    branches: ["claude/**"]
+    paths:
+      - "src/**"
+      - "src-tauri/**"
+      - "index.html"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/android.yml"
+  workflow_call:
+    inputs:
+      tag:
+        description: Etiqueta de la Release a la que subir el APK
+        type: string
+        required: true
+    secrets:
+      ANDROID_KEYSTORE_BASE64:
+        required: false
+      ANDROID_KEYSTORE_PASSWORD:
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    name: APK de Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: android
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Preparar el NDK
+        run: |
+          if [ -z "$ANDROID_NDK_LATEST_HOME" ]; then echo "::error::El runner no trae el NDK de Android"; exit 1; fi
+          echo "NDK_HOME=$ANDROID_NDK_LATEST_HOME" >> "$GITHUB_ENV"
+
+      - name: Preparar la firma
+        id: sign
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          store="$RUNNER_TEMP/cartucho-release.jks"
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$store"
+            password="$KEYSTORE_PASSWORD"
+            echo "permanent=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning title=Firma del APK::Faltan los secretos ANDROID_KEYSTORE_BASE64 y ANDROID_KEYSTORE_PASSWORD. Se firma con una clave temporal: sirve para probar, pero no se podrá actualizar con versiones posteriores."
+            password="$(openssl rand -hex 24)"
+            keytool -genkeypair -keystore "$store" -storepass "$password" -keypass "$password" \
+              -alias cartucho -keyalg RSA -keysize 4096 -validity 10000 \
+              -dname "CN=Cartucho Music (prueba)" -noprompt
+            echo "permanent=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "::add-mask::$password"
+          {
+            echo "storeFile=$store"
+            echo "keyAlias=cartucho"
+            echo "password=$password"
+          } > src-tauri/gen/android/keystore.properties
+
+      - name: Pruebas del frontend
+        run: |
+          npx tsc -b
+          npx vitest run
+
+      - name: Compilar el APK
+        run: npm run tauri android build -- --apk --target aarch64 --ci
+
+      - name: Recoger el APK
+        id: apk
+        run: |
+          apk=$(find src-tauri/gen/android/app/build/outputs/apk -name '*release*.apk' ! -name '*unsigned*' | head -1)
+          if [ -z "$apk" ]; then
+            echo "::error::No se encontró un APK firmado"; find src-tauri/gen/android/app/build/outputs -name '*.apk'; exit 1
+          fi
+          version=$(node -p "require('./package.json').version")
+          name="Cartucho-Music-v${version}-android.apk"
+          [ "${{ steps.sign.outputs.permanent }}" = "true" ] || name="Cartucho-Music-v${version}-android-PRUEBA.apk"
+          cp "$apk" "$name"
+          "$ANDROID_HOME"/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner verify --print-certs "$name" | head -3
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          ls -la "$name"
+          rm -f src-tauri/gen/android/keystore.properties "$RUNNER_TEMP/cartucho-release.jks"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.apk.outputs.name }}
+          path: ${{ steps.apk.outputs.name }}
+          retention-days: 14
+
+      - name: Subir el APK a la Release
+        if: github.event_name == 'workflow_call' || inputs.tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ steps.sign.outputs.permanent }}" != "true" ]; then
+            echo "::error title=Firma del APK::No se sube a la Release un APK firmado con una clave temporal. Añade los secretos ANDROID_KEYSTORE_BASE64 y ANDROID_KEYSTORE_PASSWORD."
+            exit 1
+          fi
+          gh release upload "${{ inputs.tag }}" "${{ steps.apk.outputs.name }}" --clobber --repo "${{ github.repository }}"

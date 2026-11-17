@@ -5,6 +5,7 @@
  *   proyecto; la app solo acepta actualizaciones firmadas con la clave pública incluida.
  * - Comprobación manual (botón) y automática (al abrir y cada 6 horas, si está activada).
  * - En Windows, el instalador se ejecuta en modo pasivo y la app se reinicia sola.
+ * - En Android se busca el APK de la última Release y se abre su descarga (ver apk.ts).
  */
 import { useEffect } from "react";
 import { create } from "zustand";
@@ -13,6 +14,9 @@ import { z } from "zod";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { isTauri } from "@/database/runtime";
 import { createKvStateStorage } from "@/database/zustandStorage";
+import { IS_MOBILE_APP } from "@/utils/platform";
+import { openExternal } from "@/utils/external";
+import { checkApkUpdate } from "./apk";
 
 export type UpdateStatus =
   | { state: "idle" }
@@ -37,6 +41,8 @@ interface UpdatesStore {
 
 /** El objeto `Update` del plugin no es serializable: vive fuera del store. */
 let pending: Update | null = null;
+/** Android: enlace de descarga del APK nuevo. */
+let pendingApk: string | null = null;
 
 /** Mensaje claro para los errores más habituales del actualizador. */
 export function describeUpdateError(e: unknown): string {
@@ -68,6 +74,19 @@ export const useUpdates = create<UpdatesStore>()(
           return;
         }
         if (manual) set({ status: { state: "checking" } });
+        if (IS_MOBILE_APP) {
+          try {
+            const update = await checkApkUpdate(__APP_VERSION__);
+            set({ lastChecked: Date.now() });
+            pendingApk = update?.url ?? null;
+            if (update) set({ status: { state: "available", version: update.version, notes: update.notes, date: update.date } });
+            else if (manual || get().status.state !== "available") set({ status: { state: manual ? "uptodate" : "idle" } });
+          } catch (e) {
+            console.warn("[updates]", e);
+            if (manual) set({ status: { state: "error", message: describeUpdateError(e) } });
+          }
+          return;
+        }
         try {
           const { check } = await import("@tauri-apps/plugin-updater");
           const update = await check({ timeout: 20_000 });
@@ -87,6 +106,11 @@ export const useUpdates = create<UpdatesStore>()(
 
       install: async () => {
         const st = get().status;
+        if (IS_MOBILE_APP) {
+          // Android descarga el APK y pide confirmación para instalarlo.
+          if (st.state === "available" && pendingApk) await openExternal(pendingApk);
+          return;
+        }
         if (st.state !== "available" || !pending) return;
         const version = st.version;
         let downloaded = 0;

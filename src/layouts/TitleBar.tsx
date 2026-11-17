@@ -2,12 +2,13 @@ import clsx from "clsx";
 import { Copy, Minus, Square, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { isTauri } from "@/database/runtime";
+import { isDesktopApp } from "@/utils/platform";
 
-/** Alto de la barra propia. En el navegador (vite dev) no hay barra: 0. */
-export const TITLEBAR_HEIGHT = isTauri() ? 36 : 0;
-// Las pantallas reservan este hueco arriba con `pt-[var(--titlebar-h)]`.
-document.documentElement.style.setProperty("--titlebar-h", `${TITLEBAR_HEIGHT}px`);
+/** Alto de la barra propia. En el navegador (vite dev) y en el teléfono no hay barra: 0. */
+export const TITLEBAR_HEIGHT = isDesktopApp() ? 36 : 0;
+// Las pantallas reservan este hueco arriba con `pt-[var(--titlebar-h)]`. En el teléfono es
+// el área de la barra de estado de Android (ver index.css).
+if (TITLEBAR_HEIGHT) document.documentElement.style.setProperty("--titlebar-h", `${TITLEBAR_HEIGHT}px`);
 
 /**
  * Barra de título propia (la ventana no tiene marco de Windows: `decorations: false`).
@@ -19,7 +20,7 @@ export function TitleBar() {
   const [maximized, setMaximized] = useState(false);
 
   useEffect(() => {
-    if (!isTauri()) return;
+    if (!isDesktopApp()) return;
     const win = getCurrentWindow();
     const sync = () => void win.isMaximized().then(setMaximized).catch(() => {});
     sync();
@@ -27,7 +28,7 @@ export function TitleBar() {
     return () => void unlisten.then((f) => f());
   }, []);
 
-  if (!isTauri()) return null;
+  if (!isDesktopApp()) return null;
   const win = getCurrentWindow();
 
   return (

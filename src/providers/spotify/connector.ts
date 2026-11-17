@@ -9,6 +9,7 @@
 import { create } from "zustand";
 import { cache, history, kv } from "@/database/stores";
 import { isTauri } from "@/database/runtime";
+import { isDesktopApp } from "@/utils/platform";
 import { registry } from "../registry";
 import { PreviewProvider } from "../preview/PreviewProvider";
 import type { ConnectionStatus } from "../types";
@@ -79,7 +80,8 @@ function usePreview() {
 }
 
 async function activate(a: SpotifyAuth) {
-  const provider = new SpotifyProvider({ auth: a, inAppPlayer: isTauri(), cacheStore: cache });
+  const provider = new SpotifyProvider({ auth: a, // El Web Playback SDK no funciona en Android: allí se controla la app oficial de Spotify.
+    inAppPlayer: isDesktopApp(), cacheStore: cache });
   const me = await provider.api.me();
   a.setStatus({ state: "connected", displayName: me.displayName });
   registry.register(provider);
@@ -101,7 +103,7 @@ export async function restoreSpotify(): Promise<boolean> {
 }
 
 export async function connectSpotify(): Promise<void> {
-  if (!isTauri()) throw new Error("La conexión con Spotify solo está disponible en la app de escritorio.");
+  if (!isTauri()) throw new Error("La conexión con Spotify solo está disponible en la app instalada (escritorio o Android).");
   const a = getAuth();
   await a.connect();
   await activate(a);

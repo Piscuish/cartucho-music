@@ -4,6 +4,7 @@ import { Notice, PhasePill, Toggle } from "@/components/ui";
 import { useEffect, useState } from "react";
 import { invokeNative, isTauri } from "@/database/runtime";
 import { useDesktop } from "@/stores/desktop";
+import { isDesktopApp } from "@/utils/platform";
 import { isAutostartEnabled, setAutostart } from "@/features/desktop/autostart";
 import { sendTrackNotification } from "@/features/desktop/useDesktopIntegration";
 import { useQueryClient } from "@tanstack/react-query";
@@ -25,7 +26,7 @@ function DesktopOnly() {
 
 export function GeneralSection() {
   const d = useDesktop();
-  const desktop = isTauri();
+  const desktop = isDesktopApp();
   const [autostart, setAutostartState] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => { isAutostartEnabled().then(setAutostartState).catch(() => setAutostartState(false)); }, []);
@@ -198,7 +199,7 @@ function MediaKeysRow() {
     : "Si tienes abierta la app oficial de Spotify, ambas reaccionarían a la vez: actívalo solo si usas Cartucho como reproductor principal.";
   return (
     <Row label="Teclas multimedia del teclado" hint={<span className={status.state === "error" ? "text-red-400" : undefined}>{hint}</span>}>
-      {isTauri() ? <Toggle label="Teclas multimedia" checked={d.mediaKeys} onChange={(v) => d.set("mediaKeys", v)} /> : <DesktopOnly />}
+      {isDesktopApp() ? <Toggle label="Teclas multimedia" checked={d.mediaKeys} onChange={(v) => d.set("mediaKeys", v)} /> : <DesktopOnly />}
     </Row>
   );
 }
@@ -215,7 +216,7 @@ export function NotificationsSection() {
 function NotificationsRows() {
   const d = useDesktop();
   const [test, setTest] = useState<"idle" | "sent" | "denied">("idle");
-  if (!isTauri()) return <Row label="Avisar al cambiar de canción"><DesktopOnly /></Row>;
+  if (!isDesktopApp()) return <Row label="Avisar al cambiar de canción"><DesktopOnly /></Row>;
   return (
     <>
       <Row label="Avisar al cambiar de canción">

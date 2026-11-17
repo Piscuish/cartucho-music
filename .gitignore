@@ -1,7 +1,9 @@
 node_modules/
 dist/
 src-tauri/target/
-src-tauri/gen/
+# Generado por Tauri; el proyecto Android sí se versiona (tiene cambios propios).
+src-tauri/gen/*
+!src-tauri/gen/android/
 *.log
 .env
 .env.*

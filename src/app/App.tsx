@@ -3,6 +3,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./queryClient";
 import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/layouts/AppShell";
+import { MobileShell } from "@/layouts/MobileShell";
+import { IS_MOBILE } from "@/utils/platform";
 import { TitleBar } from "@/layouts/TitleBar";
 import { lazy, Suspense } from "react";
 // Inicio se carga de inmediato (es la primera pantalla); el resto, bajo demanda.
@@ -29,7 +31,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/reproduciendo" element={<Suspense fallback={null}><NowPlayingPage /></Suspense>} />
-      <Route element={<AppShell />}>
+      <Route element={IS_MOBILE ? <MobileShell /> : <AppShell />}>
         <Route index element={<HomePage />} />
         <Route path="buscar" element={<SearchPage />} />
         <Route path="biblioteca" element={<LibraryPage tab="playlists" />} />

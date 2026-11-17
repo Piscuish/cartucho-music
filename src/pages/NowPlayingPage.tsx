@@ -22,6 +22,7 @@ import { providers } from "@/providers/registry";
 import type { Track } from "@/types/music";
 import { albumTypeLabel, formatDuration } from "@/utils/format";
 import { routes } from "@/utils/routes";
+import { IS_MOBILE } from "@/utils/platform";
 
 export function NowPlayingPage() {
   const nav = useNavigate();
@@ -68,7 +69,7 @@ function NowPlayingView({ t }: { t: Track }) {
       initial={{ opacity: 0, scale: 0.92 }}
       animate={{ opacity: 1, scale: state.isPlaying ? 1 : 0.94 }}
       transition={{ type: "spring", stiffness: 160, damping: 22 }}
-      className={clsx("relative", layout === "disc" ? "size-[min(52vh,460px)]" : layout === "split" ? "size-[min(56vh,520px)]" : "size-[min(46vh,440px)]")}
+      className={clsx("relative", IS_MOBILE ? "size-[min(82vw,44vh)]" : layout === "disc" ? "size-[min(52vh,460px)]" : layout === "split" ? "size-[min(56vh,520px)]" : "size-[min(46vh,440px)]")}
     >
       {layout === "disc" ? (
         <div className="relative size-full">
@@ -92,9 +93,11 @@ function NowPlayingView({ t }: { t: Track }) {
     </motion.div>
   );
 
+  // En el teléfono todo va en columna y centrado, sea cual sea el diseño elegido.
+  const centered = layout === "stage" || IS_MOBILE;
   const meta = (
-    <div className={clsx(layout === "stage" && "text-center")}>
-      <div className={clsx("mb-3 flex items-center gap-2", layout === "stage" && "justify-center")}>
+    <div className={clsx(centered && "text-center")}>
+      <div className={clsx("mb-3 flex items-center gap-2", centered && "justify-center")}>
         <ProviderBadge provider={t.provider} />
         {album && <span className="eyebrow">{albumTypeLabel[album.albumType]} · {album.year}</span>}
       </div>
@@ -147,7 +150,7 @@ function NowPlayingView({ t }: { t: Track }) {
   );
 
   const upNextPanel = upNext.length > 0 && (
-    <div className={clsx("w-full max-w-[560px]", layout === "stage" && "mx-auto")}>
+    <div className={clsx("w-full max-w-[560px]", centered && "mx-auto")}>
       <div className="eyebrow mb-2">A continuación</div>
       <div className="glass flex flex-col rounded-[var(--radius-card)] p-1.5">
         {upNext.map((n) => (
@@ -189,26 +192,37 @@ function NowPlayingView({ t }: { t: Track }) {
     >
       <DynamicBackground intensity={2} styleOverride={npBackground} />
 
-      <header className="relative z-10 flex items-center justify-between px-6 py-4">
+      <header className={clsx("relative z-10 flex items-center justify-between py-4", IS_MOBILE ? "px-3" : "px-6")}>
         <IconButton label="Cerrar (Esc)" onClick={() => nav(-1)}><ChevronDown className="size-6" /></IconButton>
-        <Segmented<NowPlayingLayout>
-          layoutId="np-layout"
-          value={layout}
-          onChange={(v) => set("nowPlayingLayout", v)}
-          options={[{ value: "stage", label: "Escenario" }, { value: "split", label: "Dividido" }, { value: "disc", label: "Disco" }]}
-        />
+        {IS_MOBILE ? (
+          <span className="eyebrow">{state.mode === "remote" && state.device ? `En ${state.device.name}` : "Reproduciendo"}</span>
+        ) : (
+          <Segmented<NowPlayingLayout>
+            layoutId="np-layout"
+            value={layout}
+            onChange={(v) => set("nowPlayingLayout", v)}
+            options={[{ value: "stage", label: "Escenario" }, { value: "split", label: "Dividido" }, { value: "disc", label: "Disco" }]}
+          />
+        )}
         <div className="flex items-center gap-2">
           {state.mode === "preview" && (
-            <span className="rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 text-[11px] font-medium text-accent">Vista previa · sin audio</span>
+            <span className="rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 text-[11px] font-medium whitespace-nowrap text-accent">{IS_MOBILE ? "Sin audio" : "Vista previa · sin audio"}</span>
           )}
           <IconButton label="Favorito" active={fav} disabled={!caps.library.write} onClick={() => toggleSaved.mutate({ track: t, saved: fav })}><Heart className={clsx("size-5", fav && "fill-current")} /></IconButton>
         </div>
       </header>
 
       {/* Centrado si cabe; con scroll si no (p. ej. Dividido + «A continuación» en ventanas bajas). */}
-      <div className="scroll-area relative z-10 flex min-h-0 flex-1 flex-col px-10 pb-10">
+      <div className={clsx("scroll-area relative z-10 flex min-h-0 flex-1 flex-col", IS_MOBILE ? "px-6 pb-[calc(var(--safe-bottom)+24px)]" : "px-10 pb-10")}>
         <div className="m-auto flex w-full justify-center">
-        {layout === "split" ? (
+        {IS_MOBILE ? (
+          <div className="flex w-full flex-col items-center gap-7">
+            {cover}
+            {meta}
+            {controls}
+            {upNextPanel}
+          </div>
+        ) : layout === "split" ? (
           <div className="grid w-full max-w-[1300px] grid-cols-[auto_minmax(0,1fr)] items-center gap-14">
             {cover}
             <div className="flex min-w-0 flex-col gap-8">

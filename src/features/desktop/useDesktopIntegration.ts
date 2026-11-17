@@ -8,6 +8,7 @@
  */
 import { useEffect, useRef } from "react";
 import { invokeNative, isTauri } from "@/database/runtime";
+import { isDesktopApp } from "@/utils/platform";
 import { usePlayer } from "@/stores/player";
 import { useDesktop } from "@/stores/desktop";
 import { MEDIA_KEYS, shouldNotify, trackKey, trayTooltip, type PlayerAction } from "./logic";
@@ -20,7 +21,7 @@ function runAction(action: PlayerAction | string) {
 }
 
 export function useDesktopIntegration() {
-  const native = isTauri();
+  const native = isDesktopApp();
   const closeToTray = useDesktop((s) => s.closeToTray);
   const mediaKeys = useDesktop((s) => s.mediaKeys);
   const track = usePlayer((s) => s.state?.track ?? null);

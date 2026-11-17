@@ -37,11 +37,11 @@ function ArtistView({ provider, id }: { provider: ProviderId; id: string }) {
     <>
       <div className="relative -mx-[var(--page-px)] -mt-8 mb-8 flex h-[320px] items-end overflow-hidden px-[var(--page-px)] pb-8">
         <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse at 70% 0%, ${c1}, transparent 60%), linear-gradient(160deg, ${c2}, var(--bg) 85%)` }} />
-        <div className="relative flex items-end gap-7">
-          <Cover artwork={a.artwork} className="size-[170px]" rounded="rounded-full" />
+        <div className="relative flex items-end gap-7 max-sm:gap-4">
+          <Cover artwork={a.artwork} className="size-[170px] max-sm:size-[110px]" rounded="rounded-full" />
           <div className="pb-2">
             <ProviderBadge provider={a.provider} />
-            <h1 className="mt-3 font-display text-[clamp(40px,6vw,76px)] leading-[0.9] font-bold tracking-tight text-white">{a.name}</h1>
+            <h1 className="mt-3 font-display text-[clamp(32px,6vw,76px)] leading-[0.9] font-bold tracking-tight text-white break-words">{a.name}</h1>
             <p className="mt-3 text-[13.5px] text-white/75">{a.genres.join(" · ")}</p>
           </div>
         </div>

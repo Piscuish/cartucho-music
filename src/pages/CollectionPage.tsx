@@ -68,16 +68,16 @@ function CollectionView({ query, kind, tracks: pagedTracks, more }: { query: Que
     <>
       <div className="relative -mx-[var(--page-px)] -mt-8 mb-6 overflow-hidden px-[var(--page-px)] pt-12 pb-8">
         <div className="absolute inset-0 opacity-50" style={{ background: `linear-gradient(180deg, ${c1}66, ${c2}22 70%, transparent)` }} />
-        <div className="relative flex flex-wrap items-end gap-8">
+        <div className="relative flex flex-wrap items-end gap-8 max-sm:flex-col max-sm:items-start max-sm:gap-5">
           <motion.div initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 200, damping: 22 }}>
-            <Cover artwork={entity.artwork} className="size-[232px]" rounded="rounded-[calc(var(--radius-cover)*1.4)]" />
+            <Cover artwork={entity.artwork} className="size-[232px] max-sm:size-[min(64vw,240px)]" rounded="rounded-[calc(var(--radius-cover)*1.4)]" />
           </motion.div>
           <div className="min-w-0 flex-1 pb-1">
             <div className="mb-3 flex items-center gap-2">
               <span className="eyebrow !text-fg/80">{entity.kind === "album" ? albumTypeLabel[entity.albumType] : "Playlist"}</span>
               <ProviderBadge provider={entity.provider} />
             </div>
-            <h1 className="font-display text-[clamp(34px,5vw,64px)] leading-[0.95] font-bold tracking-tight">{entity.name}</h1>
+            <h1 className="font-display text-[clamp(30px,5vw,64px)] leading-[0.95] font-bold tracking-tight break-words">{entity.name}</h1>
             {entity.kind === "playlist" && <p className="mt-3 text-[14px] text-muted">{entity.description}</p>}
             <p className="mt-4 text-[13.5px] text-muted">
               {entity.kind === "album" ? (

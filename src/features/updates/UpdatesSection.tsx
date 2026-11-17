@@ -4,6 +4,7 @@ import { Toggle } from "@/components/ui";
 import { invokeNative, isTauri } from "@/database/runtime";
 import { Row, SectionTitle } from "@/features/settings/common";
 import { useUpdates } from "./updater";
+import { IS_MOBILE_APP } from "@/utils/platform";
 
 const formatBytes = (n: number) => (n > 1_048_576 ? `${(n / 1_048_576).toFixed(1)} MB` : `${Math.round(n / 1024)} KB`);
 
@@ -16,12 +17,17 @@ export function UpdatesSection() {
 
   return (
     <>
-      <SectionTitle title="Actualizaciones" description="Las versiones nuevas se publican en GitHub. Cartucho solo instala actualizaciones firmadas por el proyecto." />
+      <SectionTitle
+        title="Actualizaciones"
+        description={IS_MOBILE_APP
+          ? "Las versiones nuevas se publican en GitHub. Al actualizar se descarga el APK nuevo; ábrelo y Android lo instalará encima sin borrar tus datos."
+          : "Las versiones nuevas se publican en GitHub. Cartucho solo instala actualizaciones firmadas por el proyecto."}
+      />
 
       <Row label="Versión instalada" hint={lastChecked ? `Última comprobación: ${new Date(lastChecked).toLocaleString("es")}` : "Aún no se ha comprobado."}>
         <span className="font-mono text-[13px]">{version}</span>
       </Row>
-      <Row label="Buscar actualizaciones automáticamente" hint="Al abrir Cartucho y cada 6 horas. Si hay una versión nueva, aparece un aviso en la barra lateral.">
+      <Row label="Buscar actualizaciones automáticamente" hint={`Al abrir Cartucho y cada 6 horas. Si hay una versión nueva, aparece un aviso ${IS_MOBILE_APP ? "en la pestaña Ajustes" : "en la barra lateral"}.`}>
         <Toggle label="Buscar actualizaciones automáticamente" checked={autoCheck} disabled={!desktop} onChange={setAutoCheck} />
       </Row>
       <Row label="Comprobar ahora">
@@ -53,7 +59,7 @@ export function UpdatesSection() {
               </div>
               {status.state === "available" && (
                 <button onClick={() => void install()} className="rounded-full bg-accent px-4 py-2 text-[13px] font-semibold text-on-accent">
-                  Descargar e instalar
+                  {IS_MOBILE_APP ? "Descargar APK" : "Descargar e instalar"}
                 </button>
               )}
             </div>
