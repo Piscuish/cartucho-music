@@ -6,7 +6,7 @@ Cliente musical de escritorio para Windows (Tauri + React + TypeScript) con iden
 
 > Antes de tocar las integraciones, lee **[docs/VIABILIDAD.md](docs/VIABILIDAD.md)** (restricciones de las APIs, políticas y riesgos) y **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**.
 
-## Estado — versión 1.0.6
+## Estado — versión 1.0.7
 
 | Fase | Estado |
 |---|---|
