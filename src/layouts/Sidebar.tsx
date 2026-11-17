@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { motion } from "framer-motion";
 import {
-  Disc3, Download, Heart, House, Library, ListMusic, ListOrdered, MicVocal, Music2, Search, Settings, type LucideIcon,
+  Disc3, Download, Heart, House, Library, ListMusic, ListOrdered, MicVocal, Music2, Pin, Search, Settings, type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { LogoMark, Wordmark } from "@/components/Logo";
@@ -11,13 +11,14 @@ import type { ProviderId } from "@/types/music";
 import { useConnectionStatus, useVisibleServices } from "@/hooks/useProviders";
 import { useAppearance, type NavId } from "@/stores/appearance";
 import { useUpdates } from "@/features/updates/updater";
-import { useState, type DragEvent } from "react";
+import { useMemo, useState, type DragEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Cover } from "@/components/Cover";
 import { routes } from "@/utils/routes";
 import { registry } from "@/providers/registry";
 import { useRegistryVersion } from "@/hooks/useProviders";
-import { useAddToPlaylist, useEditablePlaylists } from "@/features/library/playlists";
+import { useAddToPlaylist, useLibraryPlaylists } from "@/features/library/playlists";
+import { playlistKey, sortPlaylists, usePlaylistOrder } from "@/stores/playlistOrder";
 import { useToggleSaved } from "@/features/library/queries";
 import { isTrackDrag } from "@/features/library/dragTrack";
 import { usePlayer } from "@/stores/player";
@@ -190,45 +191,58 @@ function useDropTarget(accept: boolean, onDrop: () => void) {
   return { over, armed: !!dragging && accept, dimmed: !!dragging && !accept, handlers };
 }
 
+const PLAYLIST_MIME = "application/x-cartucho-playlist";
+
 function SidebarPlaylists({ rail }: { rail: boolean }) {
-  const provider = useVisibleServices().find((p) => registry.tryGet(p.id)?.capabilities.library.playlistWrite)?.id;
+  const provider = useVisibleServices().find((p) => registry.tryGet(p.id)?.capabilities.library.playlists)?.id;
   useRegistryVersion();
-  const playlists = useEditablePlaylists(provider ?? "spotify", !!provider);
+  const playlists = useLibraryPlaylists(provider ?? "spotify", !!provider);
+  const { pinned, order } = usePlaylistOrder();
+  const sorted = useMemo(() => sortPlaylists(playlists.data ?? [], pinned, order), [playlists.data, pinned, order]);
+  const visibleKeys = sorted.map(playlistKey);
   const dragging = useUi((s) => s.draggingTrack);
   const toggleSaved = useToggleSaved();
-  const fav = useDropTarget(!!dragging && !!registry.tryGet(dragging.provider)?.capabilities.library.write, () => {
+  const fav = useDropTarget(!!dragging && registry.tryGet(dragging.provider)?.capabilities.library.write === true, () => {
     if (dragging) toggleSaved.mutate({ track: dragging, saved: false }, {
       onSuccess: () => usePlayer.getState().showToast({ kind: "info", message: `«${dragging.name}» añadida a Tus favoritos` }),
     });
   });
-  if (!provider || !playlists.data?.length) return null;
+  if (!provider || !sorted.length) return null;
   return (
     <div className="mb-4">
-      {!rail && <div className="eyebrow px-3 pt-2 pb-2">Tus playlists</div>}
-      {rail && <div className="mx-auto mb-3 h-px w-6 bg-line" />}
-      {dragging && (
-        <div
-          {...fav.handlers}
-          className={clsx(
-            "mb-1 flex items-center gap-3 rounded-[var(--radius-control)] border border-dashed py-2 text-[13px] transition-colors",
-            rail ? "justify-center" : "px-3",
-            fav.over ? "border-accent bg-accent/15 text-accent" : "border-line text-muted",
-          )}
-        >
-          <Heart className="size-[18px] shrink-0" />
-          {!rail && <span className="truncate">Tus favoritos</span>}
-        </div>
+      {!rail && (
+        <div className="eyebrow px-3 pt-2 pb-2" title="Arrastra una playlist para cambiar su orden; el alfiler la fija arriba. Suelta una canción encima para añadirla.">Tus playlists</div>
       )}
-      {playlists.data.slice(0, 30).map((p) => <SidebarPlaylist key={p.id} playlist={p} rail={rail} />)}
+      {rail && <div className="mx-auto mb-3 h-px w-6 bg-line" />}
+      {/* Siempre visible (no aparece de golpe al arrastrar, que movería las demás). */}
+      <NavLink
+        to="/favoritos"
+        title="Tus favoritos"
+        {...fav.handlers}
+        className={({ isActive }) => clsx(
+          "flex items-center gap-3 rounded-[var(--radius-control)] py-1.5 text-[13px] transition-all",
+          rail ? "justify-center" : "px-2",
+          fav.over ? "bg-accent/20 text-fg ring-2 ring-accent" : isActive ? "bg-hover text-fg" : "text-muted hover:bg-hover hover:text-fg",
+          fav.armed && !fav.over && "ring-1 ring-accent/40",
+        )}
+      >
+        <span className="grid size-8 shrink-0 place-items-center rounded-[6px] bg-gradient-to-br from-accent to-[#ff3d7f]"><Heart className="size-3.5 fill-current text-white" /></span>
+        {!rail && <span className="min-w-0 flex-1 truncate font-medium">Tus favoritos</span>}
+      </NavLink>
+      {sorted.slice(0, 60).map((p) => (
+        <SidebarPlaylist key={p.id} playlist={p} rail={rail} pinned={pinned.includes(playlistKey(p))} visibleKeys={visibleKeys} />
+      ))}
     </div>
   );
 }
 
-function SidebarPlaylist({ playlist, rail }: { playlist: Playlist; rail: boolean }) {
+function SidebarPlaylist({ playlist, rail, pinned, visibleKeys }: { playlist: Playlist; rail: boolean; pinned: boolean; visibleKeys: string[] }) {
   const dragging = useUi((s) => s.draggingTrack);
   const add = useAddToPlaylist();
   const qc = useQueryClient();
   const v = useRegistryVersion();
+  const key = playlistKey(playlist);
+  const [reorderOver, setReorderOver] = useState(false);
   const accept = !!dragging && dragging.provider === playlist.provider && playlist.canEdit === true;
   const drop = useDropTarget(accept, async () => {
     const track = dragging!;
@@ -244,21 +258,48 @@ function SidebarPlaylist({ playlist, rail }: { playlist: Playlist; rail: boolean
     }
     add.mutate({ tracks: [track], playlist });
   });
+  const isPlaylistDrag = (e: DragEvent) => e.dataTransfer.types.includes(PLAYLIST_MIME);
+
   return (
     <NavLink
       to={routes.playlist(playlist.provider, playlist.id)}
       title={playlist.name}
-      {...drop.handlers}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(PLAYLIST_MIME, key);
+        e.dataTransfer.effectAllowed = "move";
+      }}
+      onDragEnter={(e) => { if (isPlaylistDrag(e)) { e.preventDefault(); setReorderOver(true); } else drop.handlers.onDragEnter(e); }}
+      onDragOver={(e) => { if (isPlaylistDrag(e)) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; } else drop.handlers.onDragOver(e); }}
+      onDragLeave={() => { setReorderOver(false); drop.handlers.onDragLeave(); }}
+      onDrop={(e) => {
+        if (isPlaylistDrag(e)) {
+          e.preventDefault();
+          setReorderOver(false);
+          usePlaylistOrder.getState().move(e.dataTransfer.getData(PLAYLIST_MIME), key, visibleKeys);
+        } else drop.handlers.onDrop(e);
+      }}
       className={({ isActive }) => clsx(
-        "flex items-center gap-3 rounded-[var(--radius-control)] py-1.5 text-[13px] transition-all",
+        "group/pl relative flex items-center gap-3 rounded-[var(--radius-control)] py-1.5 text-[13px] transition-all",
         rail ? "justify-center" : "px-2",
         drop.over ? "bg-accent/20 text-fg ring-2 ring-accent" : isActive ? "bg-hover text-fg" : "text-muted hover:bg-hover hover:text-fg",
         drop.armed && !drop.over && "ring-1 ring-accent/40",
         drop.dimmed && "opacity-40",
       )}
     >
+      {reorderOver && <span className="absolute -top-px right-2 left-2 h-0.5 rounded-full bg-accent" aria-hidden />}
       <Cover artwork={playlist.artwork} className="size-8 shrink-0" rounded="rounded-[6px]" />
       {!rail && <span className="min-w-0 flex-1 truncate font-medium">{playlist.name}</span>}
+      {!rail && (
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); usePlaylistOrder.getState().togglePin(key); }}
+          aria-label={pinned ? `Desfijar «${playlist.name}»` : `Fijar «${playlist.name}» arriba`}
+          title={pinned ? "Desfijar" : "Fijar arriba"}
+          className={clsx("grid size-6 shrink-0 place-items-center rounded-full transition-opacity hover:bg-hover", pinned ? "text-accent" : "text-muted opacity-0 group-hover/pl:opacity-100")}
+        >
+          <Pin className={clsx("size-3.5", pinned && "fill-current")} />
+        </button>
+      )}
     </NavLink>
   );
 }

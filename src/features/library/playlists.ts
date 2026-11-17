@@ -26,6 +26,27 @@ export function useEditablePlaylists(provider: ProviderId, enabled: boolean) {
   });
 }
 
+/** Todas las playlists de tu biblioteca (para la barra lateral). */
+export function useLibraryPlaylists(provider: ProviderId, enabled: boolean) {
+  const v = useRegistryVersion();
+  return useQuery({
+    queryKey: [provider, v, "library", "playlists", "all-sidebar"],
+    queryFn: async ({ signal }) => {
+      const out: Playlist[] = [];
+      let cursor: string | null = null;
+      for (let i = 0; i < 10; i++) {
+        const page = await registry.get(provider).library.getPlaylists({ limit: 50, cursor, signal });
+        out.push(...page.items);
+        cursor = page.nextCursor;
+        if (!cursor) break;
+      }
+      return out;
+    },
+    enabled: enabled && !!registry.tryGet(provider)?.capabilities.library.playlists,
+    staleTime: 5 * 60_000,
+  });
+}
+
 /** Añade canciones a una playlist (y opcionalmente la crea antes). */
 export function useAddToPlaylist() {
   const qc = useQueryClient();

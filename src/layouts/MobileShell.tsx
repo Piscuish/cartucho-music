@@ -11,10 +11,10 @@ import { Cover } from "@/components/Cover";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { RowSkeletons, Skeleton } from "@/components/ui";
 import { DevicePicker } from "@/features/player/DevicePicker";
-import { usePlaybackPosition, usePlayer } from "@/stores/player";
+import { usePlayer } from "@/stores/player";
 import { useUpdates } from "@/features/updates/updater";
 import { DynamicBackground } from "./DynamicBackground";
-import { PlayerToast } from "./PlayerBar";
+import { PlayerToast, ThinProgress } from "./PlayerBar";
 import { ScrollContainerContext } from "./scrollContainer";
 
 const tabs = [
@@ -83,9 +83,7 @@ function MiniPlayer() {
   const state = usePlayer((s) => s.state);
   const toggle = usePlayer((s) => s.toggle);
   const next = usePlayer((s) => s.next);
-  const position = usePlaybackPosition();
   const t = state?.track ?? null;
-  const pct = t ? Math.min(100, (position / t.durationMs) * 100) : 0;
 
   return (
     <div className="relative z-30 shrink-0 px-2 pb-2">
@@ -128,7 +126,7 @@ function MiniPlayer() {
           <SkipForward className="size-5 fill-current" />
         </button>
         <div className="absolute right-3 bottom-0 left-3 h-[2px] rounded-full bg-line">
-          <div className="h-full rounded-full bg-accent transition-[width] duration-200" style={{ width: `${pct}%` }} />
+          <ThinProgress />
         </div>
       </div>
     </div>

@@ -24,7 +24,7 @@ import type { Track } from "@/types/music";
 import { albumTypeLabel, formatDuration } from "@/utils/format";
 import { routes } from "@/utils/routes";
 import { IS_MOBILE } from "@/utils/platform";
-import { LyricsSizeControl, LyricsView } from "@/features/lyrics/LyricsView";
+import { LyricsView } from "@/features/lyrics/LyricsView";
 import { useLyricsPrefs } from "@/stores/lyrics";
 
 export function NowPlayingPage() {
@@ -54,7 +54,6 @@ function NowPlayingView({ t }: { t: Track }) {
   const nav = useNavigate();
   const p = usePlayer();
   const state = p.state!;
-  const position = usePlaybackPosition();
   const saved = useSavedSets([t]);
   const { nowPlayingLayout: layout, npBackground, npCoverShape, npShowQueue, set } = useAppearance();
   const queue = useQueue();
@@ -63,7 +62,6 @@ function NowPlayingView({ t }: { t: Track }) {
   const caps = providers[t.provider].capabilities;
   const lyricsEnabled = useLyricsPrefs((s) => s.enabled);
   const fav = saved[t.provider]?.has(t.id) ?? false;
-  const pct = (position / t.durationMs) * 100;
 
   const cover = (
     <motion.div
@@ -125,14 +123,7 @@ function NowPlayingView({ t }: { t: Track }) {
 
   const controls = (
     <div className="w-full max-w-[560px]">
-      <input
-        type="range" aria-label="Progreso" className="range w-full" min={0} max={t.durationMs} step={1000}
-        value={position} style={{ ["--fill" as string]: `${pct}%` }} onChange={(e) => p.seek(Number(e.target.value))}
-      />
-      <div className="mt-2 flex justify-between text-[12px] text-muted tabular-nums">
-        <span>{formatDuration(position)}</span>
-        <span>−{formatDuration(t.durationMs - position)}</span>
-      </div>
+      <NpProgress durationMs={t.durationMs} />
       <div className="mt-4 flex items-center justify-center gap-4">
         <IconButton label="Aleatorio" active={state.shuffle} disabled={!caps.playback.shuffle} onClick={p.toggleShuffle}><Shuffle className="size-5" /></IconButton>
         <IconButton label="Anterior" size="lg" onClick={p.previous}><SkipBack className="size-6 fill-current" /></IconButton>
@@ -190,7 +181,6 @@ function NowPlayingView({ t }: { t: Track }) {
       <div className="mb-1 flex items-center gap-2">
         <MicVocal className="size-4 text-accent" />
         <span className="eyebrow flex-1">Letra</span>
-        <LyricsSizeControl compact />
         <Link to="/letra" className="rounded-full px-3 py-1 text-[12px] font-medium text-muted hover:bg-hover hover:text-fg">Ampliar</Link>
       </div>
       <LyricsView track={t} compact className="flex-1" />
@@ -265,5 +255,24 @@ function NowPlayingView({ t }: { t: Track }) {
         </div>
       </div>
     </motion.div>
+  );
+}
+
+/** Barra de progreso de Reproduciendo: la única parte que se actualiza varias veces por segundo. */
+export function NpProgress({ durationMs }: { durationMs: number }) {
+  const position = usePlaybackPosition();
+  const seek = usePlayer((s) => s.seek);
+  const pct = (position / durationMs) * 100;
+  return (
+    <>
+      <input
+        type="range" aria-label="Progreso" className="range w-full" min={0} max={durationMs} step={1000}
+        value={position} style={{ ["--fill" as string]: `${pct}%` }} onChange={(e) => seek(Number(e.target.value))}
+      />
+      <div className="mt-2 flex justify-between text-[12px] text-muted tabular-nums">
+        <span>{formatDuration(position)}</span>
+        <span>−{formatDuration(durationMs - position)}</span>
+      </div>
+    </>
   );
 }

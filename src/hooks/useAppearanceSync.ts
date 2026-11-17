@@ -3,6 +3,7 @@ import { accents, useAppearance } from "@/stores/appearance";
 import { usePlayer } from "@/stores/player";
 import { usePalette } from "@/utils/palette";
 import { useColorScheme } from "./useColorScheme";
+import { useLightMode } from "./usePerformance";
 
 /** Texto legible sobre el acento (negro o blanco según luminancia). */
 export function contrastFor(hex: string): string {
@@ -21,6 +22,7 @@ export function useAppearanceSync() {
   const artwork = usePlayer((s) => s.state?.track?.artwork);
   const palette = usePalette(artwork);
   const hasTrack = !!artwork;
+  const light = useLightMode();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -31,7 +33,8 @@ export function useAppearanceSync() {
     root.dataset.glass = a.glass;
     root.dataset.typeface = a.typeface;
     root.dataset.corners = a.corners;
-  }, [scheme, oled, a.density, a.motion, a.glass, a.typeface, a.corners]);
+    root.dataset.perf = light ? "light" : "full";
+  }, [scheme, oled, a.density, a.motion, a.glass, a.typeface, a.corners, light]);
 
   useEffect(() => {
     const base = a.accent === "custom" ? a.customAccent : accents[a.accent].value;

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useCurrentTrack } from "@/stores/player";
 import { useAppearance, type BgStyle, type NpBackground } from "@/stores/appearance";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { useLightMode } from "@/hooks/usePerformance";
 import { toneForBackground, usePalette } from "@/utils/palette";
 
 /**
@@ -19,7 +20,10 @@ export function DynamicBackground({ intensity = 1, styleOverride }: { intensity?
   const { scheme } = useColorScheme();
   const current = useCurrentTrack();
   const [rawA, rawB] = usePalette(current?.artwork);
-  const style: BgStyle | NpBackground = styleOverride ?? globalStyle;
+  const light = useLightMode();
+  const chosen: BgStyle | NpBackground = styleOverride ?? globalStyle;
+  // En modo ligero, un degradado fijo: los desenfoques de 80–140 px son lo que más GPU gasta.
+  const style: BgStyle | NpBackground = light && chosen !== "off" ? "gradient" : chosen;
   if (style === "off" || !current || level === 0) return null;
 
   const a = toneForBackground(rawA, scheme);

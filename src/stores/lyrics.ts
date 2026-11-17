@@ -5,11 +5,11 @@ import { createKvStateStorage } from "@/database/zustandStorage";
 
 /** Tamaños de letra (como los botones A− / A+ de Spotify). */
 export const LYRICS_SIZES = [
-  { label: "Pequeña", px: 22 },
-  { label: "Normal", px: 28 },
-  { label: "Grande", px: 36 },
-  { label: "Muy grande", px: 46 },
-  { label: "Enorme", px: 58 },
+  { label: "Pequeña", px: 34 },
+  { label: "Normal", px: 44 },
+  { label: "Grande", px: 56 },
+  { label: "Muy grande", px: 68 },
+  { label: "Enorme", px: 82 },
 ] as const;
 
 interface LyricsPrefs {

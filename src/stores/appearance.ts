@@ -64,7 +64,14 @@ export interface AppearanceState {
   npBackground: NpBackground;
   npCoverShape: CoverShape;
   npShowQueue: boolean;
+  /**
+   * Rendimiento: «light» quita el desenfoque, las animaciones de fondo y los efectos caros.
+   * «auto» lo activa en equipos con pocos núcleos o poca memoria.
+   */
+  performance: PerformanceMode;
 }
+
+export type PerformanceMode = "auto" | "quality" | "light";
 
 export interface CustomPreset { id: string; name: string; values: AppearanceState }
 
@@ -111,6 +118,7 @@ export const defaults: AppearanceState = {
   npBackground: "aurora",
   npCoverShape: "rounded",
   npShowQueue: true,
+  performance: "auto",
 };
 
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
@@ -150,6 +158,7 @@ export const appearanceSchema = z.object({
   npBackground: z.enum(["aurora", "blur", "artwork"]).catch(defaults.npBackground),
   npCoverShape: z.enum(["rounded", "square", "circle"]).catch(defaults.npCoverShape),
   npShowQueue: z.boolean().catch(defaults.npShowQueue),
+  performance: z.enum(["auto", "quality", "light"]).catch(defaults.performance),
 });
 
 export function parseAppearance(raw: unknown): AppearanceState {

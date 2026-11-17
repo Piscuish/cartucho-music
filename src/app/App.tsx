@@ -25,6 +25,7 @@ import { useShortcuts } from "@/hooks/useShortcuts";
 import { useDesktopIntegration } from "@/features/desktop/useDesktopIntegration";
 import { useAutoUpdateCheck } from "@/features/updates/updater";
 import { useAppearance } from "@/stores/appearance";
+import { useLightMode } from "@/hooks/usePerformance";
 
 function AppRoutes() {
   useShortcuts();
@@ -33,6 +34,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/reproduciendo" element={<Suspense fallback={null}><NowPlayingPage /></Suspense>} />
+      <Route path="/letra" element={<Suspense fallback={null}><LyricsPage /></Suspense>} />
       <Route element={IS_MOBILE ? <MobileShell /> : <AppShell />}>
         <Route index element={<HomePage />} />
         <Route path="buscar" element={<SearchPage />} />
@@ -43,7 +45,6 @@ function AppRoutes() {
         <Route path="canciones" element={<LibraryPage tab="tracks" title="Canciones" />} />
         <Route path="favoritos" element={<FavoritesPage />} />
         <Route path="cola" element={<QueuePage />} />
-        <Route path="letra" element={<LyricsPage />} />
         <Route path="album/:provider/:id" element={<CollectionPage kind="album" />} />
         <Route path="playlist/:provider/:id" element={<CollectionPage kind="playlist" />} />
         <Route path="artista/:provider/:id" element={<ArtistPage />} />
@@ -57,9 +58,10 @@ function AppRoutes() {
 export function App() {
   useAppearanceSync();
   const motionLevel = useAppearance((s) => s.motion);
+  const light = useLightMode();
   return (
     <QueryClientProvider client={queryClient}>
-      <MotionConfig reducedMotion={motionLevel === "full" ? "never" : "always"}>
+      <MotionConfig reducedMotion={motionLevel === "full" && !light ? "never" : "always"}>
         {/* HashRouter: funciona igual en Vite y en el protocolo de Tauri. */}
         <HashRouter>
           <AppRoutes />

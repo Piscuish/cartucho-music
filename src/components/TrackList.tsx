@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { IS_MOBILE } from "@/utils/platform";
+import { endTrackDrag, startTrackDrag } from "@/features/library/dragTrack";
 import { Heart, Play } from "lucide-react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -127,6 +128,10 @@ function TrackRow({ track: t, index: i, tracks, context, showCover = true, showA
     <div
       role="listitem"
       onDoubleClick={playAt}
+      // Arrastrar la fila a una playlist o a Favoritos de la barra lateral (en el teléfono no).
+      draggable={!IS_MOBILE}
+      onDragStart={IS_MOBILE ? undefined : (e) => startTrackDrag(e, t)}
+      onDragEnd={IS_MOBILE ? undefined : endTrackDrag}
       // En el teléfono no hay doble clic: basta un toque en la fila (salvo en enlaces y botones).
       onClick={IS_MOBILE ? (e) => { if (!(e.target as Element).closest("a,button")) playAt(); } : undefined}
       className={clsx(

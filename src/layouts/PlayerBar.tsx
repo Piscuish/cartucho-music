@@ -15,7 +15,6 @@ import { providers } from "@/providers/registry";
 import { formatDuration } from "@/utils/format";
 import { routes } from "@/utils/routes";
 import { DevicePicker } from "@/features/player/DevicePicker";
-import { LyricsSizeControl } from "@/features/lyrics/LyricsView";
 import { useLyricsPrefs } from "@/stores/lyrics";
 import { endTrackDrag, startTrackDrag } from "@/features/library/dragTrack";
 import { useUi } from "@/stores/ui";
@@ -23,8 +22,7 @@ import { connectSpotify } from "@/providers/spotify/connector";
 
 export function PlayerBar() {
   const style = useAppearance((s) => s.playerStyle);
-  const { state, toggle, next, previous, seek, setVolume, toggleMute, toggleShuffle, cycleRepeat } = usePlayer();
-  const position = usePlaybackPosition();
+  const { state, toggle, next, previous, setVolume, toggleMute, toggleShuffle, cycleRepeat } = usePlayer();
   const nav = useNavigate();
   const loc = useLocation();
   const t = state?.track ?? null;
@@ -33,7 +31,6 @@ export function PlayerBar() {
 
   const caps = t ? providers[t.provider].capabilities : null;
   const fav = t ? saved[t.provider]?.has(t.id) ?? false : false;
-  const pct = t ? (position / t.durationMs) * 100 : 0;
   // Las letras vienen de LRCLIB, no del servicio (ver features/lyrics/lrclib.ts).
   const lyricsEnabled = useLyricsPrefs((s) => s.enabled);
   const volume = state?.volume ?? 0;
@@ -64,18 +61,8 @@ export function PlayerBar() {
     </div>
   );
 
-  const progress = (
-    <div className="flex w-full items-center gap-2.5 text-[11px] text-muted tabular-nums">
-      <span className="w-9 text-right">{formatDuration(position)}</span>
-      <input
-        type="range" aria-label="Progreso" className="range flex-1" min={0} max={t?.durationMs ?? 1} step={1000}
-        value={position} disabled={disabled || !caps?.playback.seek}
-        style={{ ["--fill" as string]: `${pct}%` }}
-        onChange={(e) => seek(Number(e.target.value))}
-      />
-      <span className="w-9">{t ? formatDuration(t.durationMs) : "0:00"}</span>
-    </div>
-  );
+  // Componente aparte: solo él se vuelve a dibujar 4 veces por segundo, no toda la barra.
+  const progress = <ProgressRow />;
 
   const VolIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
   const extras = (
@@ -93,7 +80,6 @@ export function PlayerBar() {
           <MicVocal className="size-4" />
         </IconButton>
       )}
-      {lyricsEnabled && <LyricsSizeControl compact />}
       <IconButton label="Cola" size="sm" active={loc.pathname === "/cola"} onClick={() => (loc.pathname === "/cola" ? nav(-1) : nav("/cola"))}>
         <ListOrdered className="size-4" />
       </IconButton>
@@ -156,7 +142,7 @@ export function PlayerBar() {
       <div className="glass relative z-30 shrink-0 border-x-0 border-b-0">
         {toast}
         <div className="absolute -top-px right-0 left-0 h-[2px] bg-line">
-          <div className="h-full bg-accent transition-[width] duration-200" style={{ width: `${pct}%` }} />
+          <ThinProgress />
         </div>
         <div className="grid h-[64px] grid-cols-[1fr_auto_1fr] items-center gap-6 px-4">
           {info}
@@ -228,4 +214,32 @@ export function PlayerToast() {
       )}
     </AnimatePresence>
   );
+}
+
+function ProgressRow() {
+  const t = usePlayer((s) => s.state?.track ?? null);
+  const seek = usePlayer((s) => s.seek);
+  const position = usePlaybackPosition();
+  const caps = t ? providers[t.provider].capabilities : null;
+  const pct = t ? (position / t.durationMs) * 100 : 0;
+  return (
+    <div className="flex w-full items-center gap-2.5 text-[11px] text-muted tabular-nums">
+      <span className="w-9 text-right">{formatDuration(position)}</span>
+      <input
+        type="range" aria-label="Progreso" className="range flex-1" min={0} max={t?.durationMs ?? 1} step={1000}
+        value={position} disabled={!t || !caps?.playback.seek}
+        style={{ ["--fill" as string]: `${pct}%` }}
+        onChange={(e) => seek(Number(e.target.value))}
+      />
+      <span className="w-9">{t ? formatDuration(t.durationMs) : "0:00"}</span>
+    </div>
+  );
+}
+
+/** Línea de progreso fina (reproductor mínimo y del teléfono). */
+export function ThinProgress() {
+  const t = usePlayer((s) => s.state?.track ?? null);
+  const position = usePlaybackPosition(500);
+  const pct = t ? Math.min(100, (position / t.durationMs) * 100) : 0;
+  return <div className="h-full rounded-full bg-accent transition-[width] duration-300" style={{ width: `${pct}%` }} />;
 }

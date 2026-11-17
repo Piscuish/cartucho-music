@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { invokeNative, isTauri } from "@/database/runtime";
 import { useDesktop } from "@/stores/desktop";
 import { isDesktopApp } from "@/utils/platform";
-import { useLyricsPrefs } from "@/stores/lyrics";
+import { LYRICS_SIZES, useLyricsPrefs } from "@/stores/lyrics";
 import { isAutostartEnabled, setAutostart } from "@/features/desktop/autostart";
 import { sendTrackNotification } from "@/features/desktop/useDesktopIntegration";
 import { useQueryClient } from "@tanstack/react-query";
@@ -174,7 +174,7 @@ export function PlaybackSection() {
 }
 
 function LyricsRows() {
-  const { enabled, setEnabled } = useLyricsPrefs();
+  const { enabled, setEnabled, size, bigger, smaller } = useLyricsPrefs();
   return (
     <>
       <h3 className="eyebrow mt-8 mb-1">Letras</h3>
@@ -184,6 +184,18 @@ function LyricsRows() {
       >
         <Toggle label="Mostrar letras sincronizadas" checked={enabled} onChange={setEnabled} />
       </Row>
+      <Row label="Tamaño de la letra" hint="El verso que suena se ve a este tamaño; los demás, algo más pequeños.">
+        <div className="flex items-center gap-1">
+          <button onClick={smaller} disabled={!enabled || size === 0} aria-label="Letra más pequeña" className="grid size-8 place-items-center rounded-full border border-line font-display text-[12px] font-bold hover:bg-hover disabled:opacity-40">A−</button>
+          <span className="w-24 text-center text-[13px] font-medium">{LYRICS_SIZES[size].label}</span>
+          <button onClick={bigger} disabled={!enabled || size === LYRICS_SIZES.length - 1} aria-label="Letra más grande" className="grid size-8 place-items-center rounded-full border border-line font-display text-[15px] font-bold hover:bg-hover disabled:opacity-40">A+</button>
+        </div>
+      </Row>
+      {enabled && (
+        <p className="mt-2 rounded-[var(--radius-control)] bg-hover px-4 py-3 font-display font-bold" style={{ fontSize: LYRICS_SIZES[size].px * 0.8, lineHeight: 1.2 }}>
+          <span className="karaoke" style={{ animation: "none", backgroundPosition: "45% 0" }}>Así se verá el verso actual</span>
+        </p>
+      )}
     </>
   );
 }

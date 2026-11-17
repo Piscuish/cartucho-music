@@ -110,6 +110,47 @@ html[data-platform="mobile"] body {
   overscroll-behavior: none;
 }
 
+/* ───────── Letra estilo karaoke ─────────
+   Lo ya cantado en blanco y lo que falta en el color de acento; el límite avanza con una
+   animación CSS que dura lo que dura el verso. */
+.karaoke {
+  background-image: linear-gradient(90deg, var(--fg) 0 50%, var(--accent) 50% 100%);
+  background-size: 200% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: karaoke var(--karaoke-dur, 3s) linear var(--karaoke-delay, 0s) forwards;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.karaoke-glow {
+  filter: drop-shadow(0 0 18px color-mix(in srgb, var(--accent) 45%, transparent));
+}
+@keyframes karaoke {
+  to { background-position: 0 0; }
+}
+.karaoke-wave {
+  animation: karaoke-wave 6s ease-in-out infinite alternate;
+}
+@keyframes karaoke-wave {
+  from { transform: translateX(0) scaleY(1); }
+  to { transform: translateX(14px) scaleY(1.15); }
+}
+html[data-perf="light"] .karaoke-wave,
+[data-motion="reduced"] .karaoke-wave,
+[data-motion="off"] .karaoke-wave { animation: none; }
+
+/* Modo ligero (equipos modestos): sin desenfoques ni animaciones de fondo, que son lo que
+   más GPU consume. El aspecto se mantiene con fondos sólidos. */
+html[data-perf="light"] .glass {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-perf="light"][data-theme="dark"] { --glass-bg: #15121c; }
+html[data-perf="light"][data-theme="light"] { --glass-bg: #fffdfa; }
+html[data-perf="light"] .anim-drift { animation: none !important; }
+
 @theme inline {
   --color-bg: var(--bg);
   --color-elev: var(--bg-elev);

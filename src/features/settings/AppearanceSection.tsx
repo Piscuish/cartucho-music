@@ -5,9 +5,10 @@ import { Chip, Segmented, Toggle } from "@/components/ui";
 import {
   accents, homeSectionLabels, layoutPresets, MAX_CUSTOM_PRESETS, useAppearance,
   type AccentId, type AppearanceState, type BgStyle, type CoverShape, type Corners, type Density, type Glass,
-  type MotionLevel, type NavId, type NowPlayingLayout, type NpBackground, type PlayerStyle, type SidebarStyle, type Theme, type Typeface,
+  type MotionLevel, type PerformanceMode, type NavId, type NowPlayingLayout, type NpBackground, type PlayerStyle, type SidebarStyle, type Theme, type Typeface,
 } from "@/stores/appearance";
 import { navGroups } from "@/layouts/Sidebar";
+import { isLowEndDevice, useLightMode } from "@/hooks/usePerformance";
 import { Row, SectionTitle } from "./common";
 
 type Tab = "layout" | "color" | "type" | "background" | "home" | "sidebar" | "nowplaying" | "motion";
@@ -19,7 +20,7 @@ const tabs: { id: Tab; label: string }[] = [
   { id: "home", label: "Inicio" },
   { id: "sidebar", label: "Barra lateral" },
   { id: "nowplaying", label: "Reproduciendo" },
-  { id: "motion", label: "Movimiento" },
+  { id: "motion", label: "Movimiento y rendimiento" },
 ];
 
 /* ───────────── Piezas visuales ───────────── */
@@ -352,11 +353,27 @@ function NowPlayingTab() {
 
 function MotionTab() {
   const a = useAppearance();
+  const light = useLightMode();
+  const lowEnd = isLowEndDevice();
   return (
-    <Row label="Animaciones" hint="«Reducidas» quita los movimientos amplios; «Ninguna» las desactiva por completo.">
-      <Segmented<MotionLevel> layoutId="seg-motion" value={a.motion} onChange={(v) => a.set("motion", v)}
-        options={[{ value: "full", label: "Completas" }, { value: "reduced", label: "Reducidas" }, { value: "off", label: "Ninguna" }]} />
-    </Row>
+    <>
+      <Row label="Animaciones" hint="«Reducidas» quita los movimientos amplios; «Ninguna» las desactiva por completo.">
+        <Segmented<MotionLevel> layoutId="seg-motion" value={a.motion} onChange={(v) => a.set("motion", v)}
+          options={[{ value: "full", label: "Completas" }, { value: "reduced", label: "Reducidas" }, { value: "off", label: "Ninguna" }]} />
+      </Row>
+      <Row
+        label="Rendimiento"
+        hint={
+          <>
+            «Ligero» quita los desenfoques, el fondo animado y los brillos de la letra, que es lo que más carga la tarjeta gráfica. Ideal para equipos modestos.
+            {a.performance === "auto" && <> Ahora: <b>{light ? "ligero" : "calidad"}</b>{lowEnd ? " (equipo modesto detectado)" : ""}.</>}
+          </>
+        }
+      >
+        <Segmented<PerformanceMode> layoutId="seg-perf" value={a.performance} onChange={(v) => a.set("performance", v)}
+          options={[{ value: "auto", label: "Automático" }, { value: "quality", label: "Calidad" }, { value: "light", label: "Ligero" }]} />
+      </Row>
+    </>
   );
 }
 
