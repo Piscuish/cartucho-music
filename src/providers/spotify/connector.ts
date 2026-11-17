@@ -19,14 +19,33 @@ const CLIENT_ID_KEY = "spotify.clientId";
 /** URI que hay que registrar en el dashboard de Spotify (el puerto lo asigna el sistema). */
 export const SPOTIFY_REDIRECT_URI = "http://127.0.0.1/callback";
 
-export async function getClientId(): Promise<string | null> {
+/**
+ * Client ID de la app «Cartucho Music» en el dashboard de Spotify, incluido para que nadie
+ * tenga que configurarlo. No es un secreto: con PKCE no existe Client Secret, y Spotify
+ * muestra este identificador en cada pantalla de autorización.
+ * `VITE_SPOTIFY_CLIENT_ID` lo sustituye al compilar; en Ajustes se puede usar uno propio.
+ */
+export const BUILTIN_SPOTIFY_CLIENT_ID: string =
+  ((import.meta.env.VITE_SPOTIFY_CLIENT_ID as string | undefined) ?? "").trim() || "adb12a47450b424f8dae9a7b5e291960";
+
+/** Client ID propio guardado por el usuario en Ajustes (null si usa el incluido). */
+export async function getCustomClientId(): Promise<string | null> {
   const stored = await kv.get(CLIENT_ID_KEY).catch(() => null);
-  const env = (import.meta.env.VITE_SPOTIFY_CLIENT_ID as string | undefined) ?? null;
-  return (stored || env || "").trim() || null;
+  const clean = (stored ?? "").trim();
+  return clean && clean !== BUILTIN_SPOTIFY_CLIENT_ID ? clean : null;
 }
 
+export async function getClientId(): Promise<string | null> {
+  return (await getCustomClientId()) ?? (BUILTIN_SPOTIFY_CLIENT_ID || null);
+}
+
+/** Guarda un Client ID propio. Vacío (o igual al incluido) vuelve a usar el de Cartucho Music. */
 export async function setClientId(id: string): Promise<void> {
   const clean = id.trim();
+  if (!clean || clean === BUILTIN_SPOTIFY_CLIENT_ID) {
+    await kv.delete(CLIENT_ID_KEY);
+    return;
+  }
   if (!/^[A-Za-z0-9]{16,64}$/.test(clean)) throw new Error("El Client ID debe tener entre 16 y 64 caracteres alfanuméricos.");
   await kv.set(CLIENT_ID_KEY, clean);
 }

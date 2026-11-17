@@ -61,7 +61,7 @@ El núcleo no cambia.
 | Reproductor integrado | `providers/spotify/webPlayback.ts` | Web Playback SDK si hay Widevine. Aparece como dispositivo «Cartucho Music». |
 | Conexión | `providers/spotify/connector.ts` | Restaura la sesión al arrancar, conecta y desconecta, sustituyendo el proveedor en el registro. |
 
-La configuración necesita el **Client ID** (en Ajustes → Servicios, o `VITE_SPOTIFY_CLIENT_ID`) y registrar la Redirect URI `http://127.0.0.1/callback` en el dashboard. **No se usa ni se guarda el Client Secret.**
+El **Client ID** de la app «Cartucho Music» va incluido (`BUILTIN_SPOTIFY_CLIENT_ID`; `VITE_SPOTIFY_CLIENT_ID` lo sustituye al compilar), así que los usuarios solo pulsan «Conectar». En Ajustes → Servicios → «Usar mi propia app» se puede guardar otro. La Redirect URI `http://127.0.0.1/callback` debe estar registrada en el dashboard de esa app. **No se usa ni se guarda el Client Secret.**
 
 ## Escala (Fase 4)
 - **Paginación de la biblioteca:** cada proveedor tiene su `useInfiniteQuery` (`useLibraryInfinite`). Al filtrar u ordenar se completa la carga página a página (`useLoadAll`) con progreso visible: unas 2.200 canciones en unos 12 s, respetando los límites de solicitudes.

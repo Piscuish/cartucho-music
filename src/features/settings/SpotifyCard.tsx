@@ -1,11 +1,11 @@
-import { Check, Copy, ExternalLink, Loader2, LogOut, Speaker } from "lucide-react";
+import { Check, ChevronDown, Copy, ExternalLink, Loader2, LogOut, Speaker } from "lucide-react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { isTauri } from "@/database/runtime";
 import { useConnectionStatus, useRegistryVersion } from "@/hooks/useProviders";
 import { providers, registry } from "@/providers/registry";
 import type { InAppPlayerStatus } from "@/providers/types";
 import {
-  connectSpotify, disconnectSpotify, getClientId, setClientId, SPOTIFY_REDIRECT_URI, useSpotifyConnector,
+  connectSpotify, disconnectSpotify, getCustomClientId, setClientId, SPOTIFY_REDIRECT_URI, useSpotifyConnector,
 } from "@/providers/spotify/connector";
 import { describeError } from "@/providers/errors";
 import { openExternal } from "@/utils/external";
@@ -31,15 +31,23 @@ export function SpotifyCard() {
   const status = useConnectionStatus("spotify");
   const flow = useSpotifyConnector((s) => s.status);
   const inApp = useInAppStatus();
+  // Vacío = se usa el Client ID incluido en la app.
   const [clientId, setClientIdInput] = useState("");
-  const [savedId, setSavedId] = useState<string | null>(null);
+  const [savedId, setSavedId] = useState("");
+  const [advanced, setAdvanced] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const desktop = isTauri();
   const connected = status.state === "connected";
 
-  useEffect(() => { getClientId().then((id) => { setSavedId(id); setClientIdInput(id ?? ""); }); }, []);
+  useEffect(() => {
+    getCustomClientId().then((id) => {
+      setSavedId(id ?? "");
+      setClientIdInput(id ?? "");
+      if (id) setAdvanced(true);
+    });
+  }, []);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -48,6 +56,7 @@ export function SpotifyCard() {
   };
 
   const onConnect = () => run(async () => {
+    // Campo vacío = Client ID incluido en la app.
     if (clientId.trim() !== savedId) { await setClientId(clientId); setSavedId(clientId.trim()); }
     await connectSpotify();
   });
@@ -88,31 +97,8 @@ export function SpotifyCard() {
 
       {desktop && !connected && (
         <div className="mt-5 space-y-4">
-          <ol className="list-decimal space-y-1.5 pl-5 text-[12.5px] leading-relaxed text-muted">
-            <li>
-              En el{" "}
-              <button onClick={() => openExternal("https://developer.spotify.com/dashboard")} className="inline-flex items-center gap-1 text-fg underline-offset-2 hover:underline">
-                dashboard de Spotify <ExternalLink className="size-3" />
-              </button>
-              , abre tu app y añade esta Redirect URI (sin puerto):
-            </li>
-          </ol>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-[var(--radius-control)] border border-line bg-hover px-3 py-2 text-[12.5px]">{SPOTIFY_REDIRECT_URI}</code>
-            <button onClick={copy} className="grid size-9 place-items-center rounded-full border border-line hover:bg-hover" aria-label="Copiar Redirect URI">
-              {copied ? <Check className="size-4 text-emerald-400" /> : <Copy className="size-4" />}
-            </button>
-          </div>
-          <ol start={2} className="list-decimal pl-5 text-[12.5px] text-muted"><li>Pega aquí el Client ID de la app (no es secreto; no hace falta el Client Secret):</li></ol>
-          <input
-            value={clientId}
-            onChange={(e) => setClientIdInput(e.target.value)}
-            placeholder="Client ID"
-            spellCheck={false}
-            className="w-full rounded-[var(--radius-control)] border border-line bg-transparent px-3 py-2 font-mono text-[13px] outline-none focus:border-accent"
-          />
           <button
-            disabled={busy || clientId.trim().length < 16}
+            disabled={busy}
             onClick={onConnect}
             className="flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-[13.5px] font-semibold text-black transition-opacity disabled:opacity-40"
             style={{ background: meta.color }}
@@ -121,9 +107,49 @@ export function SpotifyCard() {
             {busy ? "Esperando autorización…" : "Conectar con Spotify"}
           </button>
           <p className="text-[11.5px] leading-relaxed text-faint">
-            Se abrirá el navegador en accounts.spotify.com. Cartucho Music nunca ve tu contraseña; los tokens se guardan en el almacén seguro de Windows.
-            En Development Mode, el propietario de la app debe tener Premium y cada usuario debe estar en la lista de la app (máx. 5).
+            Se abrirá el navegador en accounts.spotify.com para que inicies sesión. Cartucho Music nunca ve tu contraseña; los tokens se guardan en el almacén seguro de Windows.
+            Mientras la app de Spotify esté en Development Mode, solo pueden entrar las cuentas que el propietario haya añadido a su lista (máx. 5) y él necesita Premium.
           </p>
+
+          <div className="border-t border-line pt-3">
+            <button
+              onClick={() => setAdvanced((v) => !v)}
+              className="flex items-center gap-1.5 text-[12.5px] text-muted hover:text-fg"
+              aria-expanded={advanced}
+            >
+              <ChevronDown className={`size-3.5 transition-transform ${advanced ? "rotate-180" : ""}`} />
+              Usar mi propia app de Spotify (avanzado)
+            </button>
+            {advanced && (
+              <div className="mt-3 space-y-3">
+                <ol className="list-decimal space-y-1.5 pl-5 text-[12.5px] leading-relaxed text-muted">
+                  <li>
+                    En el{" "}
+                    <button onClick={() => openExternal("https://developer.spotify.com/dashboard")} className="inline-flex items-center gap-1 text-fg underline-offset-2 hover:underline">
+                      dashboard de Spotify <ExternalLink className="size-3" />
+                    </button>
+                    , abre tu app y añade esta Redirect URI (sin puerto):
+                  </li>
+                </ol>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 rounded-[var(--radius-control)] border border-line bg-hover px-3 py-2 text-[12.5px]">{SPOTIFY_REDIRECT_URI}</code>
+                  <button onClick={copy} className="grid size-9 place-items-center rounded-full border border-line hover:bg-hover" aria-label="Copiar Redirect URI">
+                    {copied ? <Check className="size-4 text-emerald-400" /> : <Copy className="size-4" />}
+                  </button>
+                </div>
+                <ol start={2} className="list-decimal pl-5 text-[12.5px] text-muted">
+                  <li>Pega su Client ID (no hace falta el Client Secret). Déjalo vacío para usar el de Cartucho Music:</li>
+                </ol>
+                <input
+                  value={clientId}
+                  onChange={(e) => setClientIdInput(e.target.value)}
+                  placeholder="Client ID propio (opcional)"
+                  spellCheck={false}
+                  className="w-full rounded-[var(--radius-control)] border border-line bg-transparent px-3 py-2 font-mono text-[13px] outline-none focus:border-accent"
+                />
+              </div>
+            )}
+          </div>
         </div>
       )}
 

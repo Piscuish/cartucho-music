@@ -6,7 +6,7 @@ Cliente musical de escritorio para Windows (Tauri + React + TypeScript) con iden
 
 > Antes de tocar las integraciones, lee **[docs/VIABILIDAD.md](docs/VIABILIDAD.md)** (restricciones de las APIs, políticas y riesgos) y **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**.
 
-## Estado — versión 1.0.5
+## Estado — versión 1.0.6
 
 | Fase | Estado |
 |---|---|
@@ -91,8 +91,11 @@ git push origin v1.0.1
 Cada push a `main` y cada pull request pasan por el CI: tipos, pruebas de frontend y de Rust en Windows.
 
 ### Conectar Spotify
-1. En el [dashboard de Spotify](https://developer.spotify.com/dashboard), registra la Redirect URI `http://127.0.0.1/callback` (sin puerto).
-2. En **Ajustes → Servicios conectados**, pega el **Client ID** y pulsa **Conectar con Spotify**.
+En **Ajustes → Servicios conectados**, pulsa **Conectar con Spotify**. El Client ID de la app «Cartucho Music» ya va incluido.
+
+Mientras la app de Spotify esté en **Development Mode**, solo pueden entrar las cuentas añadidas en el [dashboard](https://developer.spotify.com/dashboard) → tu app → **User Management** (máximo 5), y el propietario necesita Premium.
+
+Para usar otra app de Spotify: registra en ella la Redirect URI `http://127.0.0.1/callback` (sin puerto) y pega su Client ID en **Usar mi propia app de Spotify (avanzado)**.
 
 No hace falta el Client Secret: el login usa PKCE en el navegador del sistema y los tokens se guardan en el almacén seguro de Windows.
 
