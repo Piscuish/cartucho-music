@@ -37,7 +37,9 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri -> target
+          workspaces: |
+            src-tauri -> target
+            installer/src-tauri -> target
 
       - name: Instalar dependencias
         run: npm ci
@@ -77,9 +79,11 @@ jobs:
       - name: Pruebas antes de publicar
         run: |
           npm run build
+          npm run installer:build
           npm run check
 
       - name: Compilar y crear el borrador de Release
+        id: tauri
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -89,11 +93,41 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: "Cartucho Music ${{ github.ref_name }}"
           releaseBody: |
-            Instalador para Windows 10/11 (x64). Se instala para el usuario actual, sin permisos de administrador.
+            Para Windows 10/11 (x64). Se instala para el usuario actual, sin permisos de administrador.
 
-            El instalador no está firmado: Windows SmartScreen puede mostrar un aviso. Pulsa «Más información → Ejecutar de todas formas».
+            **Descarga `Cartucho-Music-${{ github.ref_name }}-Instalador.exe`.** El otro instalador (`*_x64-setup.exe`) es el que usa el actualizador automático de la app; también sirve para instalar a mano.
+
+            Los instaladores no están firmados: Windows SmartScreen puede mostrar un aviso. Pulsa «Más información → Ejecutar de todas formas».
           releaseDraft: true
           prerelease: false
           # Publica latest.json (lo que consulta el actualizador de la app) apuntando al instalador NSIS.
           includeUpdaterJson: true
           updaterJsonPreferNsis: true
+
+      # Instalador propio (installer/): una ventana con el diseño de Cartucho que lleva dentro
+      # el instalador NSIS de arriba y lo ejecuta en silencio. El NSIS sigue en la Release
+      # porque latest.json (el actualizador) apunta a él.
+      - name: Compilar el instalador propio
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem "src-tauri/target/release/bundle/nsis/*-setup.exe" | Select-Object -First 1
+          if (-not $setup) { throw "No se encontró el instalador NSIS generado por Tauri." }
+          $app = Get-ChildItem "src-tauri/target/release/*.exe" | Sort-Object Length -Descending | Select-Object -First 1
+          if (-not $app) { throw "No se encontró el ejecutable de la app." }
+          $env:CARTUCHO_SETUP_EXE = $setup.FullName
+          $env:CARTUCHO_APP_EXE = $app.FullName
+          Write-Output "Incrustando $($setup.Name) ($([math]::Round($setup.Length / 1MB, 1)) MB); app: $($app.Name)"
+          npm run installer:tauri -- build --no-bundle
+          if ($LASTEXITCODE -ne 0) { throw "Falló la compilación del instalador propio." }
+
+      - name: Subir el instalador propio al borrador de Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $exe = Get-ChildItem "installer/src-tauri/target/release/*.exe" | Sort-Object Length -Descending | Select-Object -First 1
+          if (-not $exe) { throw "No se encontró el instalador propio compilado." }
+          $name = "Cartucho-Music-${{ github.ref_name }}-Instalador.exe"
+          Copy-Item $exe.FullName $name
+          gh release upload "${{ github.ref_name }}" $name --clobber --repo "${{ github.repository }}"
+          if ($LASTEXITCODE -ne 0) { throw "No se pudo subir $name a la Release." }

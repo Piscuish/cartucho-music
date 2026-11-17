@@ -1,0 +1,50 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Instalador de Cartucho Music",
+  "version": "../../package.json",
+  "identifier": "site.cartucho.music.installer",
+  "build": {
+    "beforeDevCommand": "npm run installer:dev",
+    "devUrl": "http://localhost:1430",
+    "beforeBuildCommand": "npm run installer:build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Instalar Cartucho Music",
+        "width": 780,
+        "height": 520,
+        "resizable": false,
+        "maximizable": false,
+        "center": true,
+        "decorations": false,
+        "shadow": true,
+        "backgroundColor": "#050406"
+      }
+    ],
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "style-src": "'self' 'unsafe-inline'",
+        "font-src": "'self' data:",
+        "img-src": "'self' data:",
+        "connect-src": "ipc: http://ipc.localhost",
+        "object-src": "'none'",
+        "base-uri": "'self'",
+        "form-action": "'none'"
+      },
+      "devCsp": null
+    }
+  },
+  "bundle": {
+    "active": false,
+    "icon": [
+      "../../src-tauri/icons/32x32.png",
+      "../../src-tauri/icons/128x128.png",
+      "../../src-tauri/icons/icon.ico"
+    ]
+  }
+}
