@@ -12,7 +12,10 @@
         "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
         "tauri": "tauri",
         "test:coverage": "vitest run --coverage",
-        "check": "tsc -b && vitest run && cargo test --manifest-path src-tauri/Cargo.toml"
+        "check": "tsc -b && tsc -p installer && vitest run && cargo test --manifest-path src-tauri/Cargo.toml && cargo test --manifest-path installer/src-tauri/Cargo.toml",
+        "installer:dev": "vite --config installer/vite.config.ts",
+        "installer:build": "tsc -p installer && vite build --config installer/vite.config.ts",
+        "installer:tauri": "cd installer && tauri"
     },
     "dependencies": {
         "@fontsource/fraunces": "^5.3.0",

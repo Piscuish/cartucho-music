@@ -31,14 +31,18 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri -> target
+          workspaces: |
+            src-tauri -> target
+            installer/src-tauri -> target
 
       - name: Instalar dependencias
         run: npm ci
 
       # Tauri incrusta `dist` al compilar Rust (también en `cargo test`): hay que construirlo antes.
       - name: Construir el frontend
-        run: npm run build
+        run: |
+          npm run build
+          npm run installer:build
 
       - name: Tipos, pruebas de frontend y pruebas de Rust
         run: npm run check

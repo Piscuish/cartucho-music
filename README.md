@@ -22,7 +22,31 @@ Cliente musical de escritorio para Windows (Tauri + React + TypeScript) con iden
 
 ## Instalar
 
-Descarga el instalador de la página de [Releases](https://github.com/Piscuish/cartucho-music/releases). También puedes compilarlo en local con `npm run tauri build`; se genera en `src-tauri/target/release/bundle/nsis/`.
+Descarga **`Cartucho-Music-vX.Y.Z-Instalador.exe`** de la página de [Releases](https://github.com/Piscuish/cartucho-music/releases).
+
+### Instalador propio
+
+`installer/` es un instalador con el diseño de Cartucho (ventana sin bordes, barra de título propia, progreso real). Es una app Tauri pequeña que **lleva dentro el instalador NSIS** que genera Tauri y lo ejecuta en modo silencioso. Así se conservan sin cambios el desinstalador, la entrada en «Aplicaciones instaladas», los accesos directos y el actualizador automático, que sigue usando el NSIS (`latest.json` apunta a él).
+
+- Detecta una instalación anterior y la actualiza en la misma carpeta, sin tocar ajustes ni sesión.
+- Permite elegir la carpeta y si se crea el acceso directo en el escritorio.
+- El progreso se mide con lo que ya se ha escrito en disco; no es una animación fingida.
+- Necesita WebView2, que ya viene con Windows 10 (actualizado) y Windows 11. En un equipo sin WebView2, usa el instalador `*_x64-setup.exe` de la misma Release, que lo descarga.
+
+Para verlo en el navegador (sin instalar nada) ejecuta `npm run installer:dev` y abre `http://localhost:1430`. También acepta `?existing=1.0.4` y `?fail=1`. Para compilarlo en local:
+
+```powershell
+npm run tauri build
+$env:CARTUCHO_SETUP_EXE = (Get-ChildItem "src-tauri/target/release/bundle/nsis/*-setup.exe")[0].FullName
+$env:CARTUCHO_APP_EXE = (Get-ChildItem "src-tauri/target/release/*.exe" | Sort-Object Length -Descending)[0].FullName
+npm run installer:tauri -- build --no-bundle
+```
+
+El resultado queda en `installer/src-tauri/target/release/`. El workflow de Release hace estos mismos pasos y sube el instalador al borrador.
+
+### Instalador NSIS
+
+También puedes compilarlo en local con `npm run tauri build`; se genera en `src-tauri/target/release/bundle/nsis/`.
 
 - Se instala para el usuario actual, sin pedir permisos de administrador.
 - Si falta WebView2, el instalador lo descarga.
