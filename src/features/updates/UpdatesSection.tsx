@@ -20,14 +20,14 @@ export function UpdatesSection() {
       <SectionTitle
         title="Actualizaciones"
         description={IS_MOBILE_APP
-          ? "Las versiones nuevas se publican en GitHub. Al actualizar se descarga el APK nuevo; ábrelo y Android lo instalará encima sin borrar tus datos."
+          ? "Las versiones nuevas se publican en GitHub. Cartucho descarga la nueva y Android te pide confirmar la instalación; tus datos y tu sesión se conservan. Android solo la acepta si está firmada por el proyecto."
           : "Las versiones nuevas se publican en GitHub. Cartucho solo instala actualizaciones firmadas por el proyecto."}
       />
 
       <Row label="Versión instalada" hint={lastChecked ? `Última comprobación: ${new Date(lastChecked).toLocaleString("es")}` : "Aún no se ha comprobado."}>
         <span className="font-mono text-[13px]">{version}</span>
       </Row>
-      <Row label="Buscar actualizaciones automáticamente" hint={`Al abrir Cartucho y cada 6 horas. Si hay una versión nueva, aparece un aviso ${IS_MOBILE_APP ? "en la pestaña Ajustes" : "en la barra lateral"}.`}>
+      <Row label="Buscar actualizaciones automáticamente" hint={`Al abrir Cartucho y cada 6 horas. Si hay una versión nueva, aparece un aviso ${IS_MOBILE_APP ? "encima del reproductor" : "en la barra lateral"}.`}>
         <Toggle label="Buscar actualizaciones automáticamente" checked={autoCheck} disabled={!desktop} onChange={setAutoCheck} />
       </Row>
       <Row label="Comprobar ahora">
@@ -59,7 +59,7 @@ export function UpdatesSection() {
               </div>
               {status.state === "available" && (
                 <button onClick={() => void install()} className="rounded-full bg-accent px-4 py-2 text-[13px] font-semibold text-on-accent">
-                  {IS_MOBILE_APP ? "Descargar APK" : "Descargar e instalar"}
+                  {IS_MOBILE_APP ? "Actualizar" : "Descargar e instalar"}
                 </button>
               )}
             </div>
@@ -77,7 +77,7 @@ export function UpdatesSection() {
               </div>
             )}
             {status.state === "installing" && (
-              <p className="mt-4 flex items-center gap-2 text-[13px]"><Loader2 className="size-4 animate-spin" /> Instalando: Cartucho se cerrará y volverá a abrirse.</p>
+              <p className="mt-4 flex items-center gap-2 text-[13px]"><Loader2 className="size-4 animate-spin" /> {IS_MOBILE_APP ? "Confirma «Actualizar» en el aviso de Android. Si te lo pide, permite instalar apps desde Cartucho Music." : "Instalando: Cartucho se cerrará y volverá a abrirse."}</p>
             )}
           </div>
         )}

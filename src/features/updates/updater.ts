@@ -5,7 +5,8 @@
  *   proyecto; la app solo acepta actualizaciones firmadas con la clave pública incluida.
  * - Comprobación manual (botón) y automática (al abrir y cada 6 horas, si está activada).
  * - En Windows, el instalador se ejecuta en modo pasivo y la app se reinicia sola.
- * - En Android se busca el APK de la última Release y se abre su descarga (ver apk.ts).
+ * - En Android se busca el APK de la última Release, se descarga dentro de la app y se abre
+ *   el instalador del sistema, que pide confirmar (ver apk.ts y src-tauri/src/apk_update.rs).
  */
 import { useEffect } from "react";
 import { create } from "zustand";
@@ -107,8 +108,25 @@ export const useUpdates = create<UpdatesStore>()(
       install: async () => {
         const st = get().status;
         if (IS_MOBILE_APP) {
-          // Android descarga el APK y pide confirmación para instalarlo.
-          if (st.state === "available" && pendingApk) await openExternal(pendingApk);
+          if (st.state !== "available" || !pendingApk) return;
+          const url = pendingApk;
+          const version = st.version;
+          set({ status: { state: "downloading", version, downloaded: 0, total: null } });
+          try {
+            const { Channel, invoke } = await import("@tauri-apps/api/core");
+            const channel = new Channel<{ kind: "progress"; downloaded: number; total: number | null } | { kind: "installing" }>();
+            channel.onmessage = (ev) => {
+              if (ev.kind === "installing") set({ status: { state: "installing", version } });
+              else set({ status: { state: "downloading", version, downloaded: ev.downloaded, total: ev.total } });
+            };
+            await invoke("apk_update_install", { url, onProgress: channel });
+            set({ status: { state: "installing", version } });
+          } catch (e) {
+            console.warn("[updates] apk", e);
+            // Plan B: descarga en el navegador; el usuario abre el APK desde allí.
+            await openExternal(url).catch(() => {});
+            set({ status: { state: "available", version, notes: "", date: null } });
+          }
           return;
         }
         if (st.state !== "available" || !pending) return;

@@ -52,6 +52,17 @@ También puedes compilarlo en local con `npm run tauri build`; se genera en `src
 - Si falta WebView2, el instalador lo descarga.
 - No está firmado: Windows SmartScreen puede avisar. Pulsa «Más información → Ejecutar de todas formas».
 
+## Android
+
+Descarga **`Cartucho-Music-vX.Y.Z-android.apk`** de [Releases](https://github.com/Piscuish/cartucho-music/releases) y ábrelo en el teléfono. Android pedirá permiso para instalar apps de origen desconocido. Funciona en Android 7 o posterior, en teléfonos de 64 bits.
+
+- **Interfaz propia de teléfono:** pestañas abajo, minirreproductor y pantallas adaptadas. En el navegador se puede ver con `?movil=1`.
+- **Spotify:** Cartucho funciona como mando de la app oficial de Spotify, porque Spotify no permite reproducir dentro de otras apps del teléfono. Abre Spotify, reproduce algo una vez y elige el dispositivo con el botón del altavoz.
+- **Sesión:** los tokens se guardan cifrados con una clave del Android Keystore.
+- **Actualizaciones:** al abrir la app y cada 6 horas se busca una Release más nueva. Con «Actualizar», Cartucho descarga el APK y abre el instalador de Android, que pide confirmar. Android solo lo instala encima si está firmado con la misma clave, y los datos se conservan.
+- **Firma:** el workflow necesita los secretos `ANDROID_KEYSTORE_BASE64` (el keystore en base64) y `ANDROID_KEYSTORE_PASSWORD`. Sin ellos, la Release no publica el APK. Guarda una copia del keystore: si se pierde, habrá que desinstalar la app para instalar versiones nuevas.
+- **Compilación:** `.github/workflows/android.yml`. En las ramas `claude/**` genera un APK de prueba como artefacto. El proyecto de Android está en `src-tauri/gen/android`.
+
 ## Actualizaciones
 
 Desde la 1.0.1, Cartucho se actualiza solo desde las Releases de GitHub:

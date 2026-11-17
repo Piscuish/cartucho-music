@@ -4,8 +4,8 @@
  */
 import clsx from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
-import { Home, Library, ListOrdered, Music2, Pause, Play, Search, Settings, SkipForward } from "lucide-react";
-import { Suspense, useEffect, useRef } from "react";
+import { Download, Home, Library, ListOrdered, Loader2, Music2, Pause, Play, Search, Settings, SkipForward, X } from "lucide-react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Cover } from "@/components/Cover";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -46,6 +46,7 @@ export function MobileShell() {
           </motion.div>
         </AnimatePresence>
       </main>
+      <UpdateBanner />
       <MiniPlayer />
       <TabBar />
     </div>
@@ -129,6 +130,35 @@ function MiniPlayer() {
         <div className="absolute right-3 bottom-0 left-3 h-[2px] rounded-full bg-line">
           <div className="h-full rounded-full bg-accent transition-[width] duration-200" style={{ width: `${pct}%` }} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** Aviso de versión nueva, como el de la barra lateral en Windows: un toque y se actualiza. */
+function UpdateBanner() {
+  const status = useUpdates((s) => s.status);
+  const install = useUpdates((s) => s.install);
+  const [hidden, setHidden] = useState<string | null>(null);
+  if (status.state !== "available" && status.state !== "downloading" && status.state !== "installing") return null;
+  if (status.state === "available" && hidden === status.version) return null;
+
+  const pct = status.state === "downloading" && status.total ? Math.round((status.downloaded / status.total) * 100) : null;
+  return (
+    <div className="relative z-30 shrink-0 px-2 pb-2">
+      <div className="flex items-center gap-3 rounded-[16px] border border-accent/40 bg-accent/[0.08] py-2 pr-1.5 pl-3 text-[13px] backdrop-blur">
+        {status.state === "available" ? <Download className="size-4 shrink-0 text-accent" /> : <Loader2 className="size-4 shrink-0 animate-spin text-accent" />}
+        <span className="min-w-0 flex-1 truncate">
+          {status.state === "available" && <>Cartucho Music <b>{status.version}</b> disponible</>}
+          {status.state === "downloading" && <>Descargando {status.version}{pct !== null ? ` · ${pct}%` : "…"}</>}
+          {status.state === "installing" && <>Confirma la instalación en el aviso de Android</>}
+        </span>
+        {status.state === "available" && (
+          <>
+            <button onClick={() => void install()} className="rounded-full bg-accent px-3.5 py-1.5 text-[12.5px] font-semibold text-on-accent">Actualizar</button>
+            <button onClick={() => setHidden(status.version)} aria-label="Ahora no" className="grid size-8 place-items-center text-muted"><X className="size-4" /></button>
+          </>
+        )}
       </div>
     </div>
   );

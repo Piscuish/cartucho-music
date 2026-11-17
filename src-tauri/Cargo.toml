@@ -42,3 +42,6 @@ tauri-plugin-updater = "2.14.1"
 [target.'cfg(target_os = "android")'.dependencies]
 keyring-core = "1"
 android-native-keyring-store = "1"
+# Actualizador de Android: abrir el instalador del sistema desde Rust.
+jni = "0.21"
+ndk-context = "0.1"

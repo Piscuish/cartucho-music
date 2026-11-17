@@ -4,11 +4,14 @@
 //! - `secrets`: tokens en el almacén seguro del sistema operativo (Fase 2).
 //! - `spotify`: OAuth PKCE con redirección loopback (Fase 3).
 //! - `desktop`: bandeja, cerrar a bandeja y arranque minimizado (Fase 7). Solo escritorio.
+//! - `apk_update`: descarga del APK nuevo y apertura del instalador. Solo Android.
 //!
 //! Plugins comunes: enlaces externos, notificaciones y reinicio. Solo en escritorio:
 //! instancia única, estado de ventana, atajos globales, inicio con el sistema y actualizaciones.
 //! En Android la app se actualiza instalando el APK nuevo.
 
+#[cfg(target_os = "android")]
+mod apk_update;
 mod db;
 #[cfg(desktop)]
 mod desktop;
@@ -82,7 +85,9 @@ pub fn run() {
             ])
     };
 
-    #[cfg(mobile)]
+    #[cfg(target_os = "android")]
+    let builder = builder.invoke_handler(handler![apk_update::apk_update_install]);
+    #[cfg(all(mobile, not(target_os = "android")))]
     let builder = builder.invoke_handler(handler![]);
 
     builder
