@@ -4,6 +4,7 @@ import { queryClient } from "./queryClient";
 import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/layouts/AppShell";
 import { MobileShell } from "@/layouts/MobileShell";
+import { SaveToDialog } from "@/features/library/SaveToDialog";
 import { IS_MOBILE } from "@/utils/platform";
 import { TitleBar } from "@/layouts/TitleBar";
 import { lazy, Suspense } from "react";
@@ -17,6 +18,7 @@ const QueuePage = lazy(() => import("@/pages/QueuePage").then((m) => ({ default:
 const CollectionPage = lazy(() => import("@/pages/CollectionPage").then((m) => ({ default: m.CollectionPage })));
 const ArtistPage = lazy(() => import("@/pages/ArtistPage").then((m) => ({ default: m.ArtistPage })));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const LyricsPage = lazy(() => import("@/pages/LyricsPage").then((m) => ({ default: m.LyricsPage })));
 const NowPlayingPage = lazy(() => import("@/pages/NowPlayingPage").then((m) => ({ default: m.NowPlayingPage })));
 import { useAppearanceSync } from "@/hooks/useAppearanceSync";
 import { useShortcuts } from "@/hooks/useShortcuts";
@@ -41,6 +43,7 @@ function AppRoutes() {
         <Route path="canciones" element={<LibraryPage tab="tracks" title="Canciones" />} />
         <Route path="favoritos" element={<FavoritesPage />} />
         <Route path="cola" element={<QueuePage />} />
+        <Route path="letra" element={<LyricsPage />} />
         <Route path="album/:provider/:id" element={<CollectionPage kind="album" />} />
         <Route path="playlist/:provider/:id" element={<CollectionPage kind="playlist" />} />
         <Route path="artista/:provider/:id" element={<ArtistPage />} />
@@ -60,6 +63,7 @@ export function App() {
         {/* HashRouter: funciona igual en Vite y en el protocolo de Tauri. */}
         <HashRouter>
           <AppRoutes />
+          <SaveToDialog />
           <TitleBar />
         </HashRouter>
       </MotionConfig>

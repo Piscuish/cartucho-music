@@ -8,7 +8,8 @@ import { ProviderBadge } from "@/components/ProviderBadge";
 import { IconButton, Segmented } from "@/components/ui";
 import { DynamicBackground } from "@/layouts/DynamicBackground";
 import { usePlaybackPosition, usePlayer } from "@/stores/player";
-import { useSavedSets, useToggleSaved } from "@/features/library/queries";
+import { useSavedSets } from "@/features/library/queries";
+import { useUi } from "@/stores/ui";
 import { useAlbum } from "@/features/catalog/queries";
 import { useQueue } from "@/features/queue/queries";
 import { useAppearance, type CoverShape, type NowPlayingLayout } from "@/stores/appearance";
@@ -23,6 +24,8 @@ import type { Track } from "@/types/music";
 import { albumTypeLabel, formatDuration } from "@/utils/format";
 import { routes } from "@/utils/routes";
 import { IS_MOBILE } from "@/utils/platform";
+import { LyricsSizeControl, LyricsView } from "@/features/lyrics/LyricsView";
+import { useLyricsPrefs } from "@/stores/lyrics";
 
 export function NowPlayingPage() {
   const nav = useNavigate();
@@ -53,12 +56,12 @@ function NowPlayingView({ t }: { t: Track }) {
   const state = p.state!;
   const position = usePlaybackPosition();
   const saved = useSavedSets([t]);
-  const toggleSaved = useToggleSaved();
   const { nowPlayingLayout: layout, npBackground, npCoverShape, npShowQueue, set } = useAppearance();
   const queue = useQueue();
   const upNext = npShowQueue ? (queue.data?.upNext ?? []).slice(0, 3) : [];
   const album = useAlbum(t.provider, t.albumId).data;
   const caps = providers[t.provider].capabilities;
+  const lyricsEnabled = useLyricsPrefs((s) => s.enabled);
   const fav = saved[t.provider]?.has(t.id) ?? false;
   const pct = (position / t.durationMs) * 100;
 
@@ -167,12 +170,11 @@ function NowPlayingView({ t }: { t: Track }) {
     </div>
   );
 
-  const hasLyrics = caps.lyrics.synced || caps.lyrics.plain;
-  const lyrics = album && (
-    <div className="glass flex flex-col rounded-[calc(var(--radius-card)*1.3)] p-6">
+  const details = album && (
+    <div className="glass flex w-full max-w-[560px] flex-col rounded-[calc(var(--radius-card)*1.3)] p-6">
       <div className="mb-4 flex items-center gap-2">
-        {hasLyrics ? <MicVocal className="size-4 text-accent" /> : <Disc3 className="size-4 text-accent" />}
-        <span className="eyebrow">{hasLyrics ? "Letras" : "Detalles"}</span>
+        <Disc3 className="size-4 text-accent" />
+        <span className="eyebrow">Detalles</span>
       </div>
       <div className="text-[12.5px] text-muted">
         <div className="flex justify-between"><span>Álbum</span><span className="text-fg">{album.name}</span></div>
@@ -181,6 +183,19 @@ function NowPlayingView({ t }: { t: Track }) {
       </div>
     </div>
   );
+
+  // Letra sincronizada (LRCLIB). Si está desactivada, se muestran los detalles de antes.
+  const lyrics = lyricsEnabled ? (
+    <div className={clsx("glass flex w-full max-w-[560px] flex-col rounded-[calc(var(--radius-card)*1.3)] p-5", IS_MOBILE ? "h-[46vh]" : "h-[min(40vh,360px)]")}>
+      <div className="mb-1 flex items-center gap-2">
+        <MicVocal className="size-4 text-accent" />
+        <span className="eyebrow flex-1">Letra</span>
+        <LyricsSizeControl compact />
+        <Link to="/letra" className="rounded-full px-3 py-1 text-[12px] font-medium text-muted hover:bg-hover hover:text-fg">Ampliar</Link>
+      </div>
+      <LyricsView track={t} compact className="flex-1" />
+    </div>
+  ) : details;
 
   return (
     <motion.div
@@ -208,7 +223,7 @@ function NowPlayingView({ t }: { t: Track }) {
           {state.mode === "preview" && (
             <span className="rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 text-[11px] font-medium whitespace-nowrap text-accent">{IS_MOBILE ? "Sin audio" : "Vista previa · sin audio"}</span>
           )}
-          <IconButton label="Favorito" active={fav} disabled={!caps.library.write} onClick={() => toggleSaved.mutate({ track: t, saved: fav })}><Heart className={clsx("size-5", fav && "fill-current")} /></IconButton>
+          <IconButton label="Guardar en…" active={fav} disabled={!caps.library.write && !caps.library.playlistWrite} onClick={() => useUi.getState().openSaveDialog(t)}><Heart className={clsx("size-5", fav && "fill-current")} /></IconButton>
         </div>
       </header>
 
@@ -220,6 +235,7 @@ function NowPlayingView({ t }: { t: Track }) {
             {cover}
             {meta}
             {controls}
+            {lyrics}
             {upNextPanel}
           </div>
         ) : layout === "split" ? (
@@ -235,13 +251,14 @@ function NowPlayingView({ t }: { t: Track }) {
         ) : layout === "disc" ? (
           <div className="grid w-full max-w-[1300px] grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-14">
             <div className="flex justify-center">{cover}</div>
-            <div className="flex flex-col gap-8">{meta}{controls}{upNextPanel}</div>
+            <div className="flex flex-col gap-8">{meta}{controls}{lyrics}{upNextPanel}</div>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-8">
             {cover}
             {meta}
             {controls}
+            {lyrics}
             {upNextPanel}
           </div>
         )}

@@ -3,6 +3,7 @@
 //! - `db`: SQLite para preferencias, caché de metadatos e historial (Fase 2).
 //! - `secrets`: tokens en el almacén seguro del sistema operativo (Fase 2).
 //! - `spotify`: OAuth PKCE con redirección loopback (Fase 3).
+//! - `lyrics`: consultas de solo lectura a LRCLIB (letras sincronizadas).
 //! - `desktop`: bandeja, cerrar a bandeja y arranque minimizado (Fase 7). Solo escritorio.
 //! - `apk_update`: descarga del APK nuevo y apertura del instalador. Solo Android.
 //!
@@ -16,6 +17,7 @@ mod db;
 #[cfg(desktop)]
 mod desktop;
 mod error;
+mod lyrics;
 mod secrets;
 mod spotify;
 
@@ -46,6 +48,7 @@ macro_rules! handler {
             spotify::spotify_authorize,
             spotify::spotify_access_token,
             spotify::spotify_logout,
+            lyrics::lrclib_request,
             $($extra),*
         ]
     };

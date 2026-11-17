@@ -114,6 +114,14 @@ export class PreviewProvider implements MusicProvider {
         p.trackIds.push(...ids.filter((x) => this.tracks.some((t) => t.id === x)));
         p.trackCount = p.trackIds.length;
       },
+      removeFromPlaylist: async (pid, ids) => {
+        this.guard(this.capabilities.library.playlistWrite, "removeFromPlaylist");
+        const p = this.find(this.playlists, pid, "Playlist");
+        if (!p.canEdit) throw new UnsupportedOperationError(id, "removeFromPlaylist");
+        p.trackIds = p.trackIds.filter((x) => !ids.includes(x));
+        p.trackCount = p.trackIds.length;
+      },
+      getPlaylistTrackIds: async (pid) => [...this.find(this.playlists, pid, "Playlist").trackIds],
       createPlaylist: async (name) => {
         this.guard(this.capabilities.library.playlistWrite, "createPlaylist");
         const p: Playlist = {

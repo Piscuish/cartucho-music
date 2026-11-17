@@ -25,6 +25,7 @@ export function createFakeSpotify() {
   let player: null | { is_playing: boolean; progress_ms: number; item: unknown; device: typeof devices[number]; shuffle_state: boolean; repeat_state: string; queue: unknown[] } = null;
   const calls: { method: string; path: string; query: URLSearchParams; body: unknown }[] = [];
   const playlistAdds: { id: string; uris: string[] }[] = [];
+  const playlistRemovals: { id: string; uris: string[] }[] = [];
   /** Respuestas forzadas por ruta para simular errores. */
   const overrides = new Map<string, () => Response>();
 
@@ -69,6 +70,12 @@ export function createFakeSpotify() {
       if (uris.length > 100) return json({ error: { status: 400, message: "Too many" } }, 400);
       playlistAdds.push({ id: plAdd[1], uris });
       return json({ snapshot_id: "s1" }, 201);
+    }
+    if (method === "DELETE" && plAdd) {
+      const items = (body?.items ?? []) as { uri: string }[];
+      if (items.length > 100 || body?.tracks) return json({ error: { status: 400, message: "Bad request" } }, 400);
+      playlistRemovals.push({ id: plAdd[1], uris: items.map((i) => i.uri) });
+      return json({ snapshot_id: "s2" });
     }
     if (method === "POST" && path === "me/playlists") {
       return json({ id: "plNew", name: body.name, description: body.description, images: [], owner: { id: "u1", display_name: "Usuaria" }, uri: "spotify:playlist:plNew", collaborative: false, items: { total: 0 } }, 201);
@@ -172,6 +179,7 @@ export function createFakeSpotify() {
     fetch: fetch as unknown as typeof globalThis.fetch,
     calls,
     playlistAdds,
+    playlistRemovals,
     overrides,
     library,
     get player() { return player; },

@@ -6,6 +6,7 @@ import { useAppearance } from "@/stores/appearance";
 import { useServicesPrefs } from "@/stores/services";
 import { useDesktop } from "@/stores/desktop";
 import { useUpdates } from "@/features/updates/updater";
+import { useLyricsPrefs } from "@/stores/lyrics";
 import "@/styles/fonts";
 import "@/styles/index.css";
 
@@ -13,7 +14,7 @@ async function start() {
   // Preferencias desde SQLite (o el respaldo del navegador) ANTES del primer render,
   // para no mostrar un tema y cambiarlo un instante después.
   try {
-    await Promise.all([useAppearance.persist.rehydrate(), useServicesPrefs.persist.rehydrate(), useDesktop.persist.rehydrate(), useUpdates.persist.rehydrate()]);
+    await Promise.all([useAppearance.persist.rehydrate(), useServicesPrefs.persist.rehydrate(), useDesktop.persist.rehydrate(), useUpdates.persist.rehydrate(), useLyricsPrefs.persist.rehydrate()]);
   } catch (e) {
     console.warn("[arranque] no se pudieron cargar las preferencias", e);
   }

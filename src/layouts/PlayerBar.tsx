@@ -9,12 +9,15 @@ import { Cover } from "@/components/Cover";
 import { IconButton } from "@/components/ui";
 import { ProviderBadge } from "@/components/ProviderBadge";
 import { usePlaybackPosition, usePlayer } from "@/stores/player";
-import { useSavedSets, useToggleSaved } from "@/features/library/queries";
+import { useSavedSets } from "@/features/library/queries";
 import { useAppearance } from "@/stores/appearance";
 import { providers } from "@/providers/registry";
 import { formatDuration } from "@/utils/format";
 import { routes } from "@/utils/routes";
 import { DevicePicker } from "@/features/player/DevicePicker";
+import { LyricsSizeControl } from "@/features/lyrics/LyricsView";
+import { useLyricsPrefs } from "@/stores/lyrics";
+import { endTrackDrag, startTrackDrag } from "@/features/library/dragTrack";
 import { useUi } from "@/stores/ui";
 import { connectSpotify } from "@/providers/spotify/connector";
 
@@ -26,12 +29,13 @@ export function PlayerBar() {
   const loc = useLocation();
   const t = state?.track ?? null;
   const saved = useSavedSets(t ? [t] : []);
-  const toggleSaved = useToggleSaved();
+  const openSaveDialog = useUi((s) => s.openSaveDialog);
 
   const caps = t ? providers[t.provider].capabilities : null;
   const fav = t ? saved[t.provider]?.has(t.id) ?? false : false;
   const pct = t ? (position / t.durationMs) * 100 : 0;
-  const lyricsAvailable = !!caps && (caps.lyrics.plain || caps.lyrics.synced);
+  // Las letras vienen de LRCLIB, no del servicio (ver features/lyrics/lrclib.ts).
+  const lyricsEnabled = useLyricsPrefs((s) => s.enabled);
   const volume = state?.volume ?? 0;
   const disabled = !t;
 
@@ -84,11 +88,12 @@ export function PlayerBar() {
       {state?.mode === "remote" && state.device && (
         <span className="mr-2 hidden text-[11.5px] text-accent xl:inline">En {state.device.name}</span>
       )}
-      {lyricsAvailable && (
-        <IconButton label="Letras" size="sm" onClick={() => nav("/reproduciendo")}>
+      {lyricsEnabled && (
+        <IconButton label="Letra" size="sm" active={loc.pathname === "/letra"} disabled={disabled} onClick={() => (loc.pathname === "/letra" ? nav(-1) : nav("/letra"))}>
           <MicVocal className="size-4" />
         </IconButton>
       )}
+      {lyricsEnabled && <LyricsSizeControl compact />}
       <IconButton label="Cola" size="sm" active={loc.pathname === "/cola"} onClick={() => (loc.pathname === "/cola" ? nav(-1) : nav("/cola"))}>
         <ListOrdered className="size-4" />
       </IconButton>
@@ -110,7 +115,13 @@ export function PlayerBar() {
   );
 
   const info = t ? (
-    <div className="flex min-w-0 items-center gap-3">
+    <div
+      className="flex min-w-0 items-center gap-3"
+      draggable
+      onDragStart={(e) => startTrackDrag(e, t)}
+      onDragEnd={endTrackDrag}
+      title="Arrastra la canción a una playlist de la barra lateral"
+    >
       <Link to="/reproduciendo" className="shrink-0" aria-label="Abrir Reproduciendo">
         <motion.div layoutId="np-cover" transition={{ type: "spring", stiffness: 260, damping: 30 }}>
           <Cover artwork={t.artwork} className={style === "minimal" ? "size-10" : "size-14"} rounded="rounded-[calc(var(--radius-cover)*0.7)]" />
@@ -119,8 +130,8 @@ export function PlayerBar() {
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <Link to={routes.album(t.provider, t.albumId)} className="truncate text-[14px] font-semibold hover:underline">{t.name}</Link>
-          {caps?.library.write && (
-            <button onClick={() => toggleSaved.mutate({ track: t, saved: fav })} aria-label={fav ? "Quitar de favoritos" : "Añadir a favoritos"} className={fav ? "text-accent" : "text-muted hover:text-fg"}>
+          {(caps?.library.write || caps?.library.playlistWrite) && (
+            <button onClick={() => openSaveDialog(t)} aria-label="Guardar en favoritos o playlists" title="Guardar en…" className={fav ? "text-accent" : "text-muted hover:text-fg"}>
               <Heart className={clsx("size-3.5", fav && "fill-current")} />
             </button>
           )}

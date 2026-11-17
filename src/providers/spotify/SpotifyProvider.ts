@@ -81,6 +81,8 @@ export class SpotifyProvider implements MusicProvider {
       saveTracks: (ids) => api.saveTracks(ids),
       removeTracks: (ids) => api.removeTracks(ids),
       addToPlaylist: (id, ids) => withPlaylistScope(() => api.addToPlaylist(id, ids)),
+      removeFromPlaylist: (id, ids) => withPlaylistScope(() => api.removeFromPlaylist(id, ids)),
+      getPlaylistTrackIds: (id, s) => api.playlistTrackIds(id, s),
       createPlaylist: (name) => withPlaylistScope(() => api.createPlaylist(name)),
     };
 

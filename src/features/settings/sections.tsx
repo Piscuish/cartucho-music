@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { invokeNative, isTauri } from "@/database/runtime";
 import { useDesktop } from "@/stores/desktop";
 import { isDesktopApp } from "@/utils/platform";
+import { useLyricsPrefs } from "@/stores/lyrics";
 import { isAutostartEnabled, setAutostart } from "@/features/desktop/autostart";
 import { sendTrackNotification } from "@/features/desktop/useDesktopIntegration";
 import { useQueryClient } from "@tanstack/react-query";
@@ -167,6 +168,22 @@ export function PlaybackSection() {
         Con Spotify, Cartucho puede sonar en este equipo (reproductor integrado «Cartucho Music») o controlar la app oficial en cualquiera de tus dispositivos.
         Elige dónde suena con el botón de dispositivos del reproductor.
       </Notice>
+      <LyricsRows />
+    </>
+  );
+}
+
+function LyricsRows() {
+  const { enabled, setEnabled } = useLyricsPrefs();
+  return (
+    <>
+      <h3 className="eyebrow mt-8 mb-1">Letras</h3>
+      <Row
+        label="Mostrar letras sincronizadas"
+        hint={<>Spotify no ofrece letras a otras apps. Cartucho las busca en <b>LRCLIB</b> (lrclib.net), una base de datos abierta mantenida por la comunidad: le envía el título, el artista, el álbum y la duración de la canción. No todas las canciones están, y algunas pueden ir algo desincronizadas.</>}
+      >
+        <Toggle label="Mostrar letras sincronizadas" checked={enabled} onChange={setEnabled} />
+      </Row>
     </>
   );
 }

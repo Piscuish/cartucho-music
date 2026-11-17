@@ -206,6 +206,36 @@ export class SpotifyApi {
     await this.cacheStore?.clear(`spotify:playlist:${playlistId}`).catch(() => {});
   }
 
+  /** `DELETE /playlists/{id}/items` con `{ items: [{ uri }] }` (máx. 100 por petición). */
+  async removeFromPlaylist(playlistId: string, trackIds: string[]) {
+    for (const part of chunk(trackIds, 100)) {
+      await this.http.delete(`playlists/${encodeURIComponent(playlistId)}/items`, { body: { items: part.map((id) => ({ uri: uri.track(id) })) } });
+    }
+    await this.cacheStore?.clear(`spotify:playlist:${playlistId}`).catch(() => {});
+  }
+
+  /**
+   * IDs de todas las canciones de una playlist propia o colaborativa, pidiendo solo el campo
+   * `id` (hasta 2000 canciones: 20 páginas de 100).
+   */
+  async playlistTrackIds(playlistId: string, signal?: AbortSignal): Promise<string[]> {
+    const ids: string[] = [];
+    const entry = z.object({ item: z.object({ id: z.string().nullish() }).nullish(), track: z.object({ id: z.string().nullish() }).nullish() });
+    let offset = 0;
+    for (let i = 0; i < 20; i++) {
+      const r = await this.notFound("Playlist", playlistId, this.http.get(`playlists/${encodeURIComponent(playlistId)}/items`, {
+        query: { limit: 100, offset, fields: "items(item(id),track(id)),next,total" }, schema: pagingSchema(entry), signal,
+      }));
+      for (const e of r.items) {
+        const id = e.item?.id ?? e.track?.id;
+        if (id) ids.push(id);
+      }
+      if (!r.next || r.items.length === 0) break;
+      offset += r.items.length;
+    }
+    return ids;
+  }
+
   /** `POST /me/playlists`: playlist privada vacía. */
   async createPlaylist(name: string): Promise<Playlist> {
     const p = await this.http.post("me/playlists", {

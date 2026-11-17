@@ -98,6 +98,10 @@ export interface LibraryModule {
   removeTracks(ids: string[]): Promise<void>;
   /** Requiere `capabilities.library.playlistWrite` y una playlist con `canEdit`. */
   addToPlaylist(playlistId: string, trackIds: string[]): Promise<void>;
+  /** Quita canciones de una playlist propia o colaborativa. Requiere `capabilities.library.playlistWrite`. */
+  removeFromPlaylist(playlistId: string, trackIds: string[]): Promise<void>;
+  /** IDs de las canciones de una playlist propia o colaborativa (para saber dónde está guardada una canción). */
+  getPlaylistTrackIds(playlistId: string, signal?: AbortSignal): Promise<string[]>;
   /** Crea una playlist privada vacía. Requiere `capabilities.library.playlistWrite`. */
   createPlaylist(name: string): Promise<Playlist>;
 }

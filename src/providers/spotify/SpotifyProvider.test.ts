@@ -101,6 +101,22 @@ describe("SpotifyProvider", () => {
     expect(fake.playlistAdds[0].uris[0]).toBe("spotify:track:t0");
   });
 
+  it("quita de una playlist con el formato de 2026 ({ items: [{ uri }] })", async () => {
+    const { provider, fake } = make();
+    await new Promise((r) => setTimeout(r, 0));
+    await provider.library.removeFromPlaylist("pl1", ["al1-t1", "al2-t2"]);
+    expect(fake.playlistRemovals).toEqual([{ id: "pl1", uris: ["spotify:track:al1-t1", "spotify:track:al2-t2"] }]);
+  });
+
+  it("lista los IDs de una playlist propia pidiendo solo el campo id", async () => {
+    const { provider, fake } = make();
+    await new Promise((r) => setTimeout(r, 0));
+    const ids = await provider.library.getPlaylistTrackIds("pl1");
+    expect(ids).toEqual(["al1-t1", "ep1", "al2-t2"]);
+    const call = fake.calls.find((c) => c.method === "GET" && c.path === "playlists/pl1/items");
+    expect(call?.query.get("fields")).toContain("item(id)");
+  });
+
   it("sin el permiso de edición pide reconectar en vez de llamar a la API", async () => {
     const fake = createFakeSpotify();
     const old = tokens({ getToken: async () => ({ accessToken: "a0", expiresAt: Date.now() + 3_600_000, scope: "user-library-read streaming" }) });

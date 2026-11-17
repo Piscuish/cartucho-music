@@ -11,6 +11,18 @@ import type { ProviderId } from "@/types/music";
 import { useConnectionStatus, useVisibleServices } from "@/hooks/useProviders";
 import { useAppearance, type NavId } from "@/stores/appearance";
 import { useUpdates } from "@/features/updates/updater";
+import { useState, type DragEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Cover } from "@/components/Cover";
+import { routes } from "@/utils/routes";
+import { registry } from "@/providers/registry";
+import { useRegistryVersion } from "@/hooks/useProviders";
+import { useAddToPlaylist, useEditablePlaylists } from "@/features/library/playlists";
+import { useToggleSaved } from "@/features/library/queries";
+import { isTrackDrag } from "@/features/library/dragTrack";
+import { usePlayer } from "@/stores/player";
+import { useUi } from "@/stores/ui";
+import type { Playlist } from "@/types/music";
 
 interface NavItem { to: string; label: string; icon: LucideIcon; end?: boolean; id?: NavId }
 
@@ -64,6 +76,7 @@ export function Sidebar() {
             </div>
           );
         })}
+        <SidebarPlaylists rail={rail} />
       </nav>
 
       <div className={clsx("shrink-0 border-t border-line", rail ? "w-full px-3 py-3" : "p-3")}>
@@ -159,6 +172,93 @@ function SidebarLink({ item, rail }: { item: NavItem; rail: boolean }) {
           {!rail && <span className="relative truncate">{item.label}</span>}
         </>
       )}
+    </NavLink>
+  );
+}
+
+/* ───── Tus playlists: también son destino al arrastrar una canción ───── */
+
+function useDropTarget(accept: boolean, onDrop: () => void) {
+  const [over, setOver] = useState(false);
+  const dragging = useUi((s) => s.draggingTrack);
+  const handlers = {
+    onDragEnter: (e: DragEvent) => { if (accept && isTrackDrag(e)) { e.preventDefault(); setOver(true); } },
+    onDragOver: (e: DragEvent) => { if (accept && isTrackDrag(e)) { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; } },
+    onDragLeave: () => setOver(false),
+    onDrop: (e: DragEvent) => { setOver(false); if (accept && isTrackDrag(e)) { e.preventDefault(); onDrop(); } },
+  };
+  return { over, armed: !!dragging && accept, dimmed: !!dragging && !accept, handlers };
+}
+
+function SidebarPlaylists({ rail }: { rail: boolean }) {
+  const provider = useVisibleServices().find((p) => registry.tryGet(p.id)?.capabilities.library.playlistWrite)?.id;
+  useRegistryVersion();
+  const playlists = useEditablePlaylists(provider ?? "spotify", !!provider);
+  const dragging = useUi((s) => s.draggingTrack);
+  const toggleSaved = useToggleSaved();
+  const fav = useDropTarget(!!dragging && !!registry.tryGet(dragging.provider)?.capabilities.library.write, () => {
+    if (dragging) toggleSaved.mutate({ track: dragging, saved: false }, {
+      onSuccess: () => usePlayer.getState().showToast({ kind: "info", message: `«${dragging.name}» añadida a Tus favoritos` }),
+    });
+  });
+  if (!provider || !playlists.data?.length) return null;
+  return (
+    <div className="mb-4">
+      {!rail && <div className="eyebrow px-3 pt-2 pb-2">Tus playlists</div>}
+      {rail && <div className="mx-auto mb-3 h-px w-6 bg-line" />}
+      {dragging && (
+        <div
+          {...fav.handlers}
+          className={clsx(
+            "mb-1 flex items-center gap-3 rounded-[var(--radius-control)] border border-dashed py-2 text-[13px] transition-colors",
+            rail ? "justify-center" : "px-3",
+            fav.over ? "border-accent bg-accent/15 text-accent" : "border-line text-muted",
+          )}
+        >
+          <Heart className="size-[18px] shrink-0" />
+          {!rail && <span className="truncate">Tus favoritos</span>}
+        </div>
+      )}
+      {playlists.data.slice(0, 30).map((p) => <SidebarPlaylist key={p.id} playlist={p} rail={rail} />)}
+    </div>
+  );
+}
+
+function SidebarPlaylist({ playlist, rail }: { playlist: Playlist; rail: boolean }) {
+  const dragging = useUi((s) => s.draggingTrack);
+  const add = useAddToPlaylist();
+  const qc = useQueryClient();
+  const v = useRegistryVersion();
+  const accept = !!dragging && dragging.provider === playlist.provider && playlist.canEdit === true;
+  const drop = useDropTarget(accept, async () => {
+    const track = dragging!;
+    // Como Spotify: avisar si ya está, en vez de duplicarla.
+    const ids = await qc.fetchQuery({
+      queryKey: [playlist.provider, v, "playlist", playlist.id, "ids"],
+      queryFn: ({ signal }) => registry.get(playlist.provider).library.getPlaylistTrackIds(playlist.id, signal),
+      staleTime: 60_000,
+    }).catch(() => [] as string[]);
+    if (ids.includes(track.id)) {
+      usePlayer.getState().showToast({ kind: "info", message: `«${track.name}» ya está en «${playlist.name}»` });
+      return;
+    }
+    add.mutate({ tracks: [track], playlist });
+  });
+  return (
+    <NavLink
+      to={routes.playlist(playlist.provider, playlist.id)}
+      title={playlist.name}
+      {...drop.handlers}
+      className={({ isActive }) => clsx(
+        "flex items-center gap-3 rounded-[var(--radius-control)] py-1.5 text-[13px] transition-all",
+        rail ? "justify-center" : "px-2",
+        drop.over ? "bg-accent/20 text-fg ring-2 ring-accent" : isActive ? "bg-hover text-fg" : "text-muted hover:bg-hover hover:text-fg",
+        drop.armed && !drop.over && "ring-1 ring-accent/40",
+        drop.dimmed && "opacity-40",
+      )}
+    >
+      <Cover artwork={playlist.artwork} className="size-8 shrink-0" rounded="rounded-[6px]" />
+      {!rail && <span className="min-w-0 flex-1 truncate font-medium">{playlist.name}</span>}
     </NavLink>
   );
 }

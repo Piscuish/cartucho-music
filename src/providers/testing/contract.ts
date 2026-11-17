@@ -125,6 +125,7 @@ export function runProviderContract(name: string, make: () => MusicProvider, fx:
       expect(created).toMatchObject({ provider: p.id, name: "Prueba de Cartucho", canEdit: true });
       const album = await p.catalog.getAlbum(fx.albumId);
       await expect(p.library.addToPlaylist(created.id, [album.tracks[0].id])).resolves.toBeUndefined();
+      await expect(p.library.removeFromPlaylist(created.id, [album.tracks[0].id])).resolves.toBeUndefined();
     });
 
     it("guarda y quita canciones de la biblioteca", async () => {
