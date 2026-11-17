@@ -35,6 +35,7 @@ interface PlayerStore {
   addToQueue: (track: Track) => Promise<void>;
   removeFromQueue: (index: number) => Promise<void>;
   moveInQueue: (from: number, to: number) => Promise<void>;
+  clearQueue: () => Promise<void>;
   showToast: (t: Toast) => void;
   clearToast: () => void;
 }
@@ -142,6 +143,11 @@ export const usePlayer = create<PlayerStore>()((set, get) => {
     },
     moveInQueue: async (from, to) => {
       await run((pb) => pb.moveInQueue(from, to));
+      const id = get().activeProvider;
+      if (id) await queryClient.invalidateQueries({ queryKey: [id, "queue"] });
+    },
+    clearQueue: async () => {
+      await run((pb) => pb.clearQueue());
       const id = get().activeProvider;
       if (id) await queryClient.invalidateQueries({ queryKey: [id, "queue"] });
     },

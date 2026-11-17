@@ -11,6 +11,9 @@ interface UiStore {
   /** Canción que se está arrastrando (desde el reproductor) hacia una playlist. */
   draggingTrack: Track | null;
   setDraggingTrack: (track: Track | null) => void;
+  /** Panel lateral de la cola (se despliega desde la derecha). */
+  queueOpen: boolean;
+  setQueueOpen: (open: boolean) => void;
 }
 
 export const useUi = create<UiStore>()((set) => ({
@@ -20,4 +23,6 @@ export const useUi = create<UiStore>()((set) => ({
   openSaveDialog: (saveDialogTrack) => set({ saveDialogTrack }),
   draggingTrack: null,
   setDraggingTrack: (draggingTrack) => set({ draggingTrack }),
+  queueOpen: false,
+  setQueueOpen: (queueOpen) => set({ queueOpen }),
 }));

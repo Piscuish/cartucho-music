@@ -5,10 +5,7 @@ import {
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { LogoMark, Wordmark } from "@/components/Logo";
-import { providers } from "@/providers/registry";
-import type { ConnectionStatus } from "@/providers/types";
-import type { ProviderId } from "@/types/music";
-import { useConnectionStatus, useVisibleServices } from "@/hooks/useProviders";
+import { useVisibleServices } from "@/hooks/useProviders";
 import { useAppearance, type NavId } from "@/stores/appearance";
 import { useUpdates } from "@/features/updates/updater";
 import { useMemo, useState, type DragEvent } from "react";
@@ -49,7 +46,6 @@ export function Sidebar() {
   const style = useAppearance((s) => s.sidebarStyle);
   const rail = style === "rail";
   const hiddenNav = useAppearance((s) => s.hiddenNav);
-  const services = useVisibleServices();
 
   return (
     <motion.aside
@@ -81,48 +77,10 @@ export function Sidebar() {
       </nav>
 
       <div className={clsx("shrink-0 border-t border-line", rail ? "w-full px-3 py-3" : "p-3")}>
-        {!rail && <div className="eyebrow px-3 pt-1 pb-2">Servicios</div>}
-        {services.map((p) => <ServiceLink key={p.id} id={p.id} rail={rail} />)}
         <UpdateNotice rail={rail} />
         <SidebarLink item={{ to: "/ajustes", label: "Configuración", icon: Settings }} rail={rail} />
       </div>
     </motion.aside>
-  );
-}
-
-const statusLabel = (s: ConnectionStatus) =>
-  s.state === "connected" ? s.displayName
-  : s.state === "connecting" ? "Conectando…"
-  : s.state === "preview" ? "Vista previa"
-  : s.state === "error" ? "Error de conexión"
-  : s.state === "unavailable" ? "No disponible"
-  : "Sin conectar";
-
-const statusDot: Record<ConnectionStatus["state"], string> = {
-  connected: "bg-emerald-400", connecting: "bg-amber-400", preview: "bg-accent", error: "bg-red-400", unavailable: "bg-faint", disconnected: "bg-faint",
-};
-
-function ServiceLink({ id, rail }: { id: ProviderId; rail: boolean }) {
-  const p = providers[id];
-  const st = useConnectionStatus(id);
-  const label = statusLabel(st);
-  return (
-    <NavLink
-      to="/ajustes/servicios"
-      title={`${p.name}: ${label}`}
-      className={clsx("flex items-center gap-3 rounded-[var(--radius-control)] py-2 text-[13px] transition-colors hover:bg-hover", rail ? "justify-center" : "px-3")}
-    >
-      <span className="relative grid size-6 place-items-center rounded-md" style={{ background: `${p.color}22` }}>
-        <span className="size-2 rounded-full" style={{ background: p.color }} />
-        <span className={clsx("absolute -right-0.5 -bottom-0.5 size-2 rounded-full ring-2 ring-[var(--bg)]", statusDot[st.state])} />
-      </span>
-      {!rail && (
-        <span className="min-w-0 flex-1">
-          <span className="block truncate font-medium">{p.name}</span>
-          <span className="block truncate text-[11.5px] text-muted">{label}</span>
-        </span>
-      )}
-    </NavLink>
   );
 }
 

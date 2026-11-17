@@ -28,6 +28,8 @@ export function PlayerBar() {
   const t = state?.track ?? null;
   const saved = useSavedSets(t ? [t] : []);
   const openSaveDialog = useUi((s) => s.openSaveDialog);
+  const queueOpen = useUi((s) => s.queueOpen);
+  const setQueueOpen = useUi((s) => s.setQueueOpen);
 
   const caps = t ? providers[t.provider].capabilities : null;
   const fav = t ? saved[t.provider]?.has(t.id) ?? false : false;
@@ -80,7 +82,7 @@ export function PlayerBar() {
           <MicVocal className="size-4" />
         </IconButton>
       )}
-      <IconButton label="Cola" size="sm" active={loc.pathname === "/cola"} onClick={() => (loc.pathname === "/cola" ? nav(-1) : nav("/cola"))}>
+      <IconButton label="Cola" size="sm" active={queueOpen} onClick={() => setQueueOpen(!queueOpen)}>
         <ListOrdered className="size-4" />
       </IconButton>
       <DevicePicker />

@@ -161,6 +161,8 @@ export interface PlaybackModule {
   addToQueue(trackId: string): Promise<void>;
   /** Requiere `capabilities.queue.remove`. */
   removeFromQueue(index: number): Promise<void>;
+  /** Vacía «A continuación» (la canción actual sigue). Requiere `capabilities.queue.remove`. */
+  clearQueue(): Promise<void>;
   /** Requiere `capabilities.queue.reorder`. */
   moveInQueue(from: number, to: number): Promise<void>;
 }

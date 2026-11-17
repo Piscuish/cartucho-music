@@ -14,6 +14,7 @@ import { IconButton } from "@/components/ui";
 import { useSavedSets } from "@/features/library/queries";
 import { LyricsView } from "@/features/lyrics/LyricsView";
 import { DevicePicker } from "@/features/player/DevicePicker";
+import { QueuePanel } from "@/features/queue/QueuePanel";
 import { TrackMenu } from "@/components/TrackMenu";
 import { DynamicBackground } from "@/layouts/DynamicBackground";
 import { NpProgress } from "@/pages/NowPlayingPage";
@@ -25,6 +26,7 @@ import { isDesktopApp, IS_MOBILE } from "@/utils/platform";
 export function LyricsPage() {
   const nav = useNavigate();
   const t = usePlayer((s) => s.state?.track ?? null);
+  const [showQueue, setShowQueue] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && nav(-1);
@@ -41,16 +43,21 @@ export function LyricsPage() {
           <div className="text-[15px] font-semibold">Cartucho Music</div>
           <div className="flex items-center gap-1.5 text-[12.5px] text-muted"><Captions className="size-3.5" /> Letras</div>
         </div>
-        <DevicePicker />
-        <IconButton label="Reproduciendo" onClick={() => nav("/reproduciendo", { replace: true })}><Captions className="size-5 text-accent" /></IconButton>
-        <IconButton label="Cola" onClick={() => nav("/cola")}><ListOrdered className="size-5" /></IconButton>
+        <IconButton label={showQueue ? "Ver la letra" : "Letra"} active={!showQueue} onClick={() => setShowQueue(false)}><Captions className="size-5" /></IconButton>
+        <IconButton label="Cola" active={showQueue} onClick={() => setShowQueue(!showQueue)}><ListOrdered className="size-5" /></IconButton>
         {!IS_MOBILE && <FullscreenButton />}
       </header>
 
       {t ? (
         <div className={clsx("relative z-10 grid min-h-0 flex-1", IS_MOBILE ? "grid-rows-[auto_minmax(0,1fr)] gap-2 px-6" : "grid-cols-[minmax(240px,30%)_minmax(0,1fr)] items-center gap-14 px-14")}>
           <SongCard compact={IS_MOBILE} />
-          <LyricsView track={t} className={clsx("h-full", !IS_MOBILE && "pl-6")} />
+          {showQueue ? (
+            <div className={clsx("h-full min-h-0 py-4", !IS_MOBILE && "pl-6")}>
+              <QueuePanel variant="lyrics" onClose={() => setShowQueue(false)} />
+            </div>
+          ) : (
+            <LyricsView track={t} className={clsx("h-full", !IS_MOBILE && "pl-6")} />
+          )}
         </div>
       ) : (
         <div className="relative z-10 grid flex-1 place-items-center text-muted">No hay nada sonando.</div>
@@ -125,6 +132,7 @@ function BottomBar() {
         <IconButton label="Repetir" active={!!state && state.repeat !== "off"} disabled={!t || !caps?.playback.repeat} onClick={p.cycleRepeat}>
           {state?.repeat === "one" ? <Repeat1 className="size-5" /> : <Repeat className="size-5" />}
         </IconButton>
+        {IS_MOBILE && <DevicePicker />}
       </div>
 
       <div className={clsx("flex min-w-0 flex-1 flex-col", IS_MOBILE && "order-1 w-full")}>
@@ -133,6 +141,7 @@ function BottomBar() {
 
       {!IS_MOBILE && (
         <div className="flex items-center gap-1">
+          <DevicePicker />
           <IconButton label="Volver a Reproduciendo" active onClick={() => nav("/reproduciendo", { replace: true })}><Captions className="size-5" /></IconButton>
           <IconButton label={volume === 0 ? "Activar sonido" : "Silenciar"} disabled={!t || !caps?.playback.volume} onClick={p.toggleMute}><VolIcon className="size-5" /></IconButton>
           <input

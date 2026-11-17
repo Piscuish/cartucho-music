@@ -272,6 +272,13 @@ export class SpotifyPlayback implements PlaybackModule, DevicesModule {
     await this.applyQueue(list);
   }
 
+  /** Deja solo la canción actual (sigue sonando donde iba). */
+  async clearQueue(): Promise<void> {
+    const list = await this.editableList();
+    if (list.length <= 1) return;
+    await this.applyQueue([list[0]]);
+  }
+
   /** Mueve una canción de «A continuación» de `from` a `to`. */
   async moveInQueue(from: number, to: number): Promise<void> {
     const list = await this.editableList();

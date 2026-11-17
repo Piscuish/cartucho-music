@@ -16,6 +16,8 @@ interface ServicesPrefs {
 }
 
 const DEFAULT_HIDDEN: ProviderId[] = ["apple-music"];
+const ALWAYS_HIDDEN: ProviderId[] = ["apple-music"];
+const withAlwaysHidden = (xs: ProviderId[]) => [...new Set([...xs, ...ALWAYS_HIDDEN])];
 
 const schema = z.object({
   hidden: z.array(z.enum(providerIds as [ProviderId, ...ProviderId[]])).catch(DEFAULT_HIDDEN),
@@ -25,14 +27,18 @@ export const useServicesPrefs = create<ServicesPrefs>()(
   persist(
     (set) => ({
       hidden: DEFAULT_HIDDEN,
-      setHidden: (id, hidden) => set((s) => ({ hidden: hidden ? [...new Set([...s.hidden, id])] : s.hidden.filter((x) => x !== id) })),
+      // Apple Music está oculto siempre hasta que se pueda vincular (Apple Developer Program).
+      setHidden: (id, hidden) => set((s) => ({ hidden: withAlwaysHidden(hidden ? [...s.hidden, id] : s.hidden.filter((x) => x !== id)) })),
     }),
     {
       name: "services",
       version: 1,
       storage: createJSONStorage(() => createKvStateStorage()),
       partialize: (s) => ({ hidden: s.hidden }),
-      merge: (persisted, current) => ({ ...current, ...schema.parse(typeof persisted === "object" && persisted ? persisted : {}) }),
+      merge: (persisted, current) => {
+        const v = schema.parse(typeof persisted === "object" && persisted ? persisted : {});
+        return { ...current, hidden: withAlwaysHidden(v.hidden) };
+      },
       skipHydration: true,
     },
   ),

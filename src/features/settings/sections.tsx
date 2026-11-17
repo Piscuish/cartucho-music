@@ -1,6 +1,6 @@
 import { Check, Minus, X } from "lucide-react";
 import { LogoMark } from "@/components/Logo";
-import { Notice, PhasePill, Toggle } from "@/components/ui";
+import { Notice, Toggle } from "@/components/ui";
 import { useEffect, useState } from "react";
 import { invokeNative, isTauri } from "@/database/runtime";
 import { useDesktop } from "@/stores/desktop";
@@ -9,11 +9,9 @@ import { LYRICS_SIZES, useLyricsPrefs } from "@/stores/lyrics";
 import { isAutostartEnabled, setAutostart } from "@/features/desktop/autostart";
 import { sendTrackNotification } from "@/features/desktop/useDesktopIntegration";
 import { useQueryClient } from "@tanstack/react-query";
-import { providerList, type ProviderMeta } from "@/providers/registry";
+import { providerList } from "@/providers/registry";
 import type { ProviderCapabilities } from "@/providers/types";
-import { useConnectionStatus, useVisibleServices } from "@/hooks/useProviders";
-import { useServicesPrefs } from "@/stores/services";
-import { setServiceVisible } from "@/providers/bootstrap";
+import { useVisibleServices } from "@/hooks/useProviders";
 import { shortcuts } from "@/hooks/useShortcuts";
 import { cache, history, kv, storageBackend } from "@/database/stores";
 import { secureStore } from "@/services/secure-store";
@@ -80,58 +78,13 @@ function CapCell({ v }: { v: boolean | string }) {
   return <X className="mx-auto size-4 text-faint" />;
 }
 
-function ServiceCard({ p }: { p: ProviderMeta }) {
-  const status = useConnectionStatus(p.id);
-  const label = status.state === "connected" ? `Conectado como ${status.displayName}`
-    : status.state === "preview" ? "Vista previa con datos de ejemplo"
-    : "Sin conectar";
-  return (
-    <div className="rounded-[var(--radius-card)] border border-line p-5">
-      <div className="flex items-center gap-3">
-        <span className="grid size-10 place-items-center rounded-xl" style={{ background: `${p.color}1f` }}>
-          <span className="size-3.5 rounded-full" style={{ background: p.color }} />
-        </span>
-        <div className="flex-1">
-          <div className="font-semibold">{p.name}</div>
-          <div className="text-[12.5px] text-muted">{label}</div>
-        </div>
-        <PhasePill phase={p.phase} />
-      </div>
-      <p className="mt-4 text-[12.5px] leading-relaxed text-muted">
-        {p.id === "spotify"
-          ? "OAuth 2.0 con PKCE a través del navegador del sistema. No hace falta client secret. Requiere Premium para controlar la reproducción."
-          : "MusicKit con Developer Token firmado en un servidor propio. Requiere Apple Developer Program y suscripción a Apple Music."}
-      </p>
-      <button disabled className="mt-4 w-full cursor-not-allowed rounded-full border border-line py-2 text-[13px] font-medium text-faint">
-        Conectar · disponible en la Fase {p.phase}
-      </button>
-    </div>
-  );
-}
-
-const visibilityHint: Record<string, string> = {
-  spotify: "Tu biblioteca y reproducción de Spotify.",
-  "apple-music": "Requiere Apple Developer Program para vincular una cuenta. Mientras tanto solo hay datos de ejemplo.",
-};
-
 export function ServicesSection() {
   const visible = useVisibleServices();
-  const hidden = useServicesPrefs((s) => s.hidden);
   return (
     <>
-      <SectionTitle title="Servicios conectados" description="Cada servicio se conecta de forma independiente y funciona aislado. Cartucho Music nunca combina contenido de distintos proveedores en una misma cola o playlist." />
+      <SectionTitle title="Servicios conectados" description="Conecta tu cuenta de Spotify para usar tu biblioteca y controlar la reproducción." />
       <div className="mb-8 grid gap-4 md:grid-cols-2">
         {visible.some((p) => p.id === "spotify") && <SpotifyCard />}
-        {visible.filter((p) => p.id !== "spotify").map((p) => <ServiceCard key={p.id} p={p} />)}
-      </div>
-
-      <h3 className="eyebrow mb-1">Mostrar servicios</h3>
-      <div className="mb-8">
-        {providerList.map((p) => (
-          <Row key={p.id} label={p.name} hint={hidden.includes(p.id) ? `Oculto. ${visibilityHint[p.id] ?? ""}` : visibilityHint[p.id]}>
-            <Toggle label={`Mostrar ${p.name}`} checked={!hidden.includes(p.id)} onChange={(v) => setServiceVisible(p.id, v)} />
-          </Row>
-        ))}
       </div>
 
       <h3 className="eyebrow mb-3">Capacidades declaradas</h3>
@@ -331,7 +284,7 @@ export function AboutSection() {
         </div>
       </div>
       <p className="mt-6 max-w-xl text-[13px] leading-relaxed text-muted">
-        Cartucho Music es un cliente independiente. No está afiliado a Spotify ni a Apple, ni respaldado por ellos. Spotify y Apple Music son marcas de sus respectivos propietarios.
+        Cartucho Music es un cliente independiente. No está afiliado a Spotify ni respaldado por Spotify. Spotify es una marca de su propietario.
       </p>
     </>
   );

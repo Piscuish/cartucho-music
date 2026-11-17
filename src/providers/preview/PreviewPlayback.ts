@@ -141,6 +141,11 @@ export class PreviewPlayback implements PlaybackModule {
     this.order.splice(this.index + 1 + i, 1);
     this.commit({});
   }
+  async clearQueue() {
+    this.guard(this.deps.capabilities.queue.remove, "clearQueue");
+    this.order = this.order.slice(0, this.index + 1);
+    this.commit({});
+  }
   async moveInQueue(from: number, to: number) {
     this.guard(this.deps.capabilities.queue.reorder, "moveInQueue");
     const up = this.order.slice(this.index + 1);

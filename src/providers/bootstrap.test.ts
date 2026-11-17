@@ -10,12 +10,17 @@ describe("visibilidad de servicios", () => {
     expect(registry.list().map((p) => p.id)).toEqual(["spotify"]);
   });
 
-  it("se puede mostrar y volver a ocultar en caliente", () => {
+  it("Apple Music sigue oculto aunque se intente mostrar", () => {
     setServiceVisible("apple-music", true);
-    expect(registry.tryGet("apple-music")).toBeDefined();
-    expect(useServicesPrefs.getState().hidden).not.toContain("apple-music");
-    setServiceVisible("apple-music", false);
     expect(registry.tryGet("apple-music")).toBeUndefined();
     expect(useServicesPrefs.getState().hidden).toContain("apple-music");
+  });
+
+  it("Spotify se puede ocultar y volver a mostrar en caliente", () => {
+    setServiceVisible("spotify", false);
+    expect(registry.tryGet("spotify")).toBeUndefined();
+    setServiceVisible("spotify", true);
+    expect(registry.tryGet("spotify")).toBeDefined();
+    expect(useServicesPrefs.getState().hidden).not.toContain("spotify");
   });
 });

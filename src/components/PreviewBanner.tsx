@@ -18,7 +18,7 @@ export function PreviewBanner() {
         <span className="font-semibold">Modo vista previa.</span>{" "}
         <span className="text-muted">
           {all
-            ? "Artistas, álbumes y portadas son ficticios. Ningún contenido proviene todavía de Spotify ni de Apple Music, y el reproductor no emite audio."
+            ? "Artistas, álbumes y portadas son ficticios. Ningún contenido proviene todavía de Spotify, y el reproductor no emite audio."
             : `El contenido marcado como ${names} es ficticio (vista previa) y no emite audio. El resto procede de tus servicios conectados.`}
         </span>
       </div>

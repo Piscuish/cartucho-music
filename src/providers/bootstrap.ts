@@ -23,7 +23,8 @@ export function bootstrapProviders() {
 /** Muestra u oculta un servicio en caliente. */
 export function setServiceVisible(id: ProviderId, visible: boolean) {
   useServicesPrefs.getState().setHidden(id, !visible);
-  if (!visible) registry.unregister(id);
+  // Apple Music queda oculto siempre (no se puede vincular sin Apple Developer Program).
+  if (!visible || useServicesPrefs.getState().hidden.includes(id)) registry.unregister(id);
   else if (!registry.tryGet(id)) {
     registry.register(new PreviewProvider(id, { kv, history, latencyMs: 120 }));
     if (id === "spotify") void restoreSpotify();

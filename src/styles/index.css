@@ -121,8 +121,11 @@ html[data-platform="mobile"] body {
   background-clip: text;
   color: transparent;
   animation: karaoke var(--karaoke-dur, 3s) linear var(--karaoke-delay, 0s) forwards;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
+  /* «slice» (por defecto): si el verso ocupa dos líneas, el fondo se reparte entre ellas como
+     una sola tira, así que el relleno avanza por la primera línea y luego por la segunda.
+     Con «clone» cada línea tendría su propio relleno y se verían dos zonas marcadas. */
+  -webkit-box-decoration-break: slice;
+  box-decoration-break: slice;
 }
 .karaoke-glow {
   filter: drop-shadow(0 0 18px color-mix(in srgb, var(--accent) 45%, transparent));
